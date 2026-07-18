@@ -117,4 +117,24 @@ function refreshBadges(av, dir, opts) {
   }
 }
 
-module.exports = { SCHEMA_VERSION, template, avPath, writeJson, readAv, initFile, versionString, statusString, show, applyBump, today, applyBuild, applyStatus, refreshBadges };
+function setJsonVersion(file, version, dryRun) {
+  if (!fs.existsSync(file)) return;
+  let data;
+  try { data = JSON.parse(fs.readFileSync(file, 'utf8')); }
+  catch { return; } // skip unreadable JSON silently; SKILL surfaces the file list
+  if (!Object.prototype.hasOwnProperty.call(data, 'version')) return;
+  data.version = version;
+  if (dryRun) { console.log(`would update ${file} -> ${version}`); return; }
+  writeJson(file, data);
+}
+
+function propagate(av, dir, opts) {
+  const version = versionString(av);
+  const root = dir || process.cwd();
+  setJsonVersion(path.join(root, 'package.json'), version, opts && opts.dryRun);
+  for (const rel of (av.config.json || [])) {
+    setJsonVersion(path.join(root, rel), version, opts && opts.dryRun);
+  }
+}
+
+module.exports = { SCHEMA_VERSION, template, avPath, writeJson, readAv, initFile, versionString, statusString, show, applyBump, today, applyBuild, applyStatus, refreshBadges, propagate };

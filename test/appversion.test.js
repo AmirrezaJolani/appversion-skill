@@ -114,3 +114,23 @@ test('refreshBadges rewrites shields version + status badges', () => {
   assert.match(out, /badge\/version-0\.2\.0-brightgreen/);
   assert.match(out, /badge\/status-stable-orange/);
 });
+
+test('propagate updates package.json and configured json files', () => {
+  const dir = tmp();
+  fs.writeFileSync(path.join(dir, 'package.json'),
+    JSON.stringify({ name: 'demo', version: '0.1.0' }, null, 2) + '\n');
+  fs.writeFileSync(path.join(dir, 'manifest.json'),
+    JSON.stringify({ version: '0.1.0', other: true }, null, 2) + '\n');
+  const noVersion = path.join(dir, 'data.json');
+  fs.writeFileSync(noVersion, JSON.stringify({ hello: 'world' }, null, 2) + '\n');
+
+  const d = av.template();
+  d.version = { major: 0, minor: 2, patch: 0 };
+  d.config.json = ['manifest.json', 'data.json'];
+  av.propagate(d, dir, {});
+
+  assert.strictEqual(JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8')).version, '0.2.0');
+  assert.strictEqual(JSON.parse(fs.readFileSync(path.join(dir, 'manifest.json'), 'utf8')).version, '0.2.0');
+  // files without a version field are left untouched
+  assert.deepStrictEqual(JSON.parse(fs.readFileSync(noVersion, 'utf8')), { hello: 'world' });
+});
