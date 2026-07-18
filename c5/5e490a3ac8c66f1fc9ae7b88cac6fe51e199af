@@ -1,0 +1,26 @@
+package.json
+  s_98241cf29d641a::t_3888314a13e5ac 1-8
+.gitignore
+  s_98241cf29d641a::t_20cd7d61178f2d 1-3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "c55e490a3ac8c66f1fc9ae7b88cac6fe51e199af",
+  "prompts": {},
+  "humans": {
+    "h_2c3c47a0a3eb51": {
+      "author": "AmirrezaJolani <amirreza.mameghani@pillar.it>"
+    }
+  },
+  "sessions": {
+    "s_98241cf29d641a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "577d27f2-f068-410a-8790-782fe4cb9ee0",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "AmirrezaJolani <amirreza.mameghani@pillar.it>"
+    }
+  }
+}
