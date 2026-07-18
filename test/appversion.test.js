@@ -85,3 +85,15 @@ test('applyBuild increments number + total and stamps the date', () => {
   av.applyBuild(d, new Date(2026, 6, 18));
   assert.deepStrictEqual(d.build, { date: '18.07.2026', number: 3, total: 6 });
 });
+
+test('applyStatus normalizes stage and sets number', () => {
+  const d = av.template();
+  av.applyStatus(d, 'RC', 2);
+  assert.deepStrictEqual(d.status, { stage: 'rc', number: 2 });
+  av.applyStatus(d, 'stable');
+  assert.deepStrictEqual(d.status, { stage: 'stable', number: 0 });
+});
+
+test('applyStatus rejects an unknown stage', () => {
+  assert.throws(() => av.applyStatus(av.template(), 'gamma'), /invalid status stage/);
+});

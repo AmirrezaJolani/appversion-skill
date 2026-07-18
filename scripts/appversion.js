@@ -87,4 +87,16 @@ function applyBuild(av, now) {
   return av.build;
 }
 
-module.exports = { SCHEMA_VERSION, template, avPath, writeJson, readAv, initFile, versionString, statusString, show, applyBump, today, applyBuild };
+const STAGES = ['stable', 'rc', 'beta', 'alpha'];
+
+function applyStatus(av, stage, number) {
+  const norm = String(stage || '').toLowerCase();
+  if (!STAGES.includes(norm)) {
+    throw new Error(`invalid status stage: ${stage} (expected ${STAGES.join('|')})`);
+  }
+  av.status.stage = norm;
+  av.status.number = Number(number) || 0;
+  return av.status;
+}
+
+module.exports = { SCHEMA_VERSION, template, avPath, writeJson, readAv, initFile, versionString, statusString, show, applyBump, today, applyBuild, applyStatus };
