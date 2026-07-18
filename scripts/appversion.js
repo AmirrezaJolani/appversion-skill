@@ -42,4 +42,25 @@ function initFile(dir) {
   return true;
 }
 
-module.exports = { SCHEMA_VERSION, template, avPath, writeJson, readAv, initFile };
+function versionString(av) {
+  const v = av.version;
+  return `${v.major}.${v.minor}.${v.patch}`;
+}
+
+function statusString(av) {
+  if (!av.status || !av.status.stage) return 'stable';
+  return av.status.number ? `${av.status.stage}.${av.status.number}` : av.status.stage;
+}
+
+function show(av, field) {
+  switch (field || 'full') {
+    case 'version': return versionString(av);
+    case 'status': return statusString(av);
+    case 'build': return JSON.stringify(av.build);
+    case 'commit': return av.commit == null ? '' : String(av.commit);
+    case 'full': return JSON.stringify(av, null, 2);
+    default: throw new Error(`unknown field: ${field}`);
+  }
+}
+
+module.exports = { SCHEMA_VERSION, template, avPath, writeJson, readAv, initFile, versionString, statusString, show };

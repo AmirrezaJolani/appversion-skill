@@ -35,3 +35,16 @@ test('readAv throws a clear error when the file is missing', () => {
   const dir = tmp();
   assert.throws(() => av.readAv(dir), /appversion\.json not found/);
 });
+
+test('versionString formats the semver core', () => {
+  assert.strictEqual(av.versionString({ version: { major: 1, minor: 4, patch: 2 } }), '1.4.2');
+});
+
+test('show returns the requested field', () => {
+  const data = av.template();
+  data.version = { major: 2, minor: 0, patch: 1 };
+  data.commit = 'abc1234';
+  assert.strictEqual(av.show(data, 'version'), '2.0.1');
+  assert.strictEqual(av.show(data, 'commit'), 'abc1234');
+  assert.strictEqual(JSON.parse(av.show(data, 'full')).version.major, 2);
+});
