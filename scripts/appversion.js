@@ -73,4 +73,18 @@ function applyBump(av, level) {
   return versionString(av);
 }
 
-module.exports = { SCHEMA_VERSION, template, avPath, writeJson, readAv, initFile, versionString, statusString, show, applyBump };
+function today(now) {
+  const d = now || new Date();
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  return `${dd}.${mm}.${d.getFullYear()}`;
+}
+
+function applyBuild(av, now) {
+  av.build.number += 1;
+  av.build.total += 1;
+  av.build.date = today(now);
+  return av.build;
+}
+
+module.exports = { SCHEMA_VERSION, template, avPath, writeJson, readAv, initFile, versionString, statusString, show, applyBump, today, applyBuild };

@@ -74,3 +74,14 @@ test('applyBump follows semver and resets lower fields + build.number', () => {
 test('applyBump rejects an invalid level', () => {
   assert.throws(() => av.applyBump(av.template(), 'huge'), /invalid bump level/);
 });
+
+test('today formats DD.MM.YYYY from local date parts', () => {
+  assert.strictEqual(av.today(new Date(2026, 6, 8)), '08.07.2026'); // month is 0-indexed
+});
+
+test('applyBuild increments number + total and stamps the date', () => {
+  const d = av.template();
+  d.build = { date: null, number: 2, total: 5 };
+  av.applyBuild(d, new Date(2026, 6, 18));
+  assert.deepStrictEqual(d.build, { date: '18.07.2026', number: 3, total: 6 });
+});
