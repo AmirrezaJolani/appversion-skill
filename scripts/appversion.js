@@ -99,4 +99,22 @@ function applyStatus(av, stage, number) {
   return av.status;
 }
 
-module.exports = { SCHEMA_VERSION, template, avPath, writeJson, readAv, initFile, versionString, statusString, show, applyBump, today, applyBuild, applyStatus };
+function encodeBadge(s) {
+  return String(s).replace(/-/g, '--').replace(/ /g, '_');
+}
+
+function refreshBadges(av, dir, opts) {
+  const ver = encodeBadge(versionString(av));
+  const stage = encodeBadge((av.status && av.status.stage) || 'stable');
+  for (const rel of (av.config.markdown || [])) {
+    const file = path.join(dir || process.cwd(), rel);
+    if (!fs.existsSync(file)) continue;
+    let text = fs.readFileSync(file, 'utf8');
+    text = text.replace(/(badge\/version-)([^-)\s]+)(-)/g, `$1${ver}$3`);
+    text = text.replace(/(badge\/status-)([^-)\s]+)(-)/g, `$1${stage}$3`);
+    if (opts && opts.dryRun) { console.log(`would update badges in ${file}`); continue; }
+    fs.writeFileSync(file, text);
+  }
+}
+
+module.exports = { SCHEMA_VERSION, template, avPath, writeJson, readAv, initFile, versionString, statusString, show, applyBump, today, applyBuild, applyStatus, refreshBadges };

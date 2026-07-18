@@ -97,3 +97,20 @@ test('applyStatus normalizes stage and sets number', () => {
 test('applyStatus rejects an unknown stage', () => {
   assert.throws(() => av.applyStatus(av.template(), 'gamma'), /invalid status stage/);
 });
+
+test('refreshBadges rewrites shields version + status badges', () => {
+  const dir = tmp();
+  const readme = path.join(dir, 'README.md');
+  fs.writeFileSync(readme,
+    '# App\n' +
+    '![v](https://img.shields.io/badge/version-0.1.0-brightgreen.svg)\n' +
+    '![s](https://img.shields.io/badge/status-alpha-orange.svg)\n');
+  const d = av.template();
+  d.version = { major: 0, minor: 2, patch: 0 };
+  d.status = { stage: 'stable', number: 0 };
+  d.config.markdown = ['README.md'];
+  av.refreshBadges(d, dir);
+  const out = fs.readFileSync(readme, 'utf8');
+  assert.match(out, /badge\/version-0\.2\.0-brightgreen/);
+  assert.match(out, /badge\/status-stable-orange/);
+});
