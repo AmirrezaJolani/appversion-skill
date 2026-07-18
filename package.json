@@ -1,0 +1,8 @@
+{
+  "name": "appversion-skill",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Agent skill: analyze commits, bump semver in appversion.json, update changelog, tag, and cut a GitHub Release.",
+  "engines": { "node": ">=18" },
+  "scripts": { "test": "node --test" }
+}
