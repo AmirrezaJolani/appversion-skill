@@ -1,0 +1,24 @@
+docs/superpowers/specs/2026-07-18-appversion-skill-design.md
+  s_98241cf29d641a::t_3d706b89b2dd3b 17-18,35-36,46-47,63-64,67-68,75,98,111-113,119,124,126,128,140-158,167,170,210,249-250,270,277-281,286,295-297,300-303,306-312,317,320,323-324,350-354,367-368,380-382,392-394
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "8a9e36fb051f67a5081866cd8ee20266d8cb04fc",
+  "prompts": {},
+  "humans": {
+    "h_2c3c47a0a3eb51": {
+      "author": "AmirrezaJolani <amirreza.mameghani@pillar.it>"
+    }
+  },
+  "sessions": {
+    "s_98241cf29d641a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "577d27f2-f068-410a-8790-782fe4cb9ee0",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "AmirrezaJolani <amirreza.mameghani@pillar.it>"
+    }
+  }
+}
