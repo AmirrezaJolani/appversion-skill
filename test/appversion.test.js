@@ -48,3 +48,29 @@ test('show returns the requested field', () => {
   assert.strictEqual(av.show(data, 'commit'), 'abc1234');
   assert.strictEqual(JSON.parse(av.show(data, 'full')).version.major, 2);
 });
+
+test('applyBump follows semver and resets lower fields + build.number', () => {
+  const base = () => {
+    const d = av.template();
+    d.version = { major: 1, minor: 2, patch: 3 };
+    d.build = { date: '01.01.2026', number: 7, total: 42 };
+    return d;
+  };
+
+  const major = base(); av.applyBump(major, 'major');
+  assert.deepStrictEqual(major.version, { major: 2, minor: 0, patch: 0 });
+
+  const minor = base(); av.applyBump(minor, 'minor');
+  assert.deepStrictEqual(minor.version, { major: 1, minor: 3, patch: 0 });
+
+  const patch = base(); av.applyBump(patch, 'patch');
+  assert.deepStrictEqual(patch.version, { major: 1, minor: 2, patch: 4 });
+
+  // build.number resets to 0 on any bump; total is preserved
+  assert.strictEqual(patch.build.number, 0);
+  assert.strictEqual(patch.build.total, 42);
+});
+
+test('applyBump rejects an invalid level', () => {
+  assert.throws(() => av.applyBump(av.template(), 'huge'), /invalid bump level/);
+});

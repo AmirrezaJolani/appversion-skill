@@ -63,4 +63,14 @@ function show(av, field) {
   }
 }
 
-module.exports = { SCHEMA_VERSION, template, avPath, writeJson, readAv, initFile, versionString, statusString, show };
+function applyBump(av, level) {
+  const v = av.version;
+  if (level === 'major') { v.major += 1; v.minor = 0; v.patch = 0; }
+  else if (level === 'minor') { v.minor += 1; v.patch = 0; }
+  else if (level === 'patch') { v.patch += 1; }
+  else throw new Error(`invalid bump level: ${level} (expected major|minor|patch)`);
+  av.build.number = 0;
+  return versionString(av);
+}
+
+module.exports = { SCHEMA_VERSION, template, avPath, writeJson, readAv, initFile, versionString, statusString, show, applyBump };
