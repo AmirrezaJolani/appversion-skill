@@ -1,0 +1,27 @@
+docs/superpowers/plans/2026-07-18-appversion-skill.md
+  s_98241cf29d641a::t_fb5428c1fe4605 1-491,493-500,502-752,754,756-769,771-2000
+  s_98241cf29d641a::t_ffb6bc3584aedd 492,501
+  s_98241cf29d641a::t_f1ffa5a93d9470 770
+  s_98241cf29d641a::t_4b4c62eadb5b97 753,755
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "27c624d5c91e3c7e34321e5f824fd93260687286",
+  "prompts": {},
+  "humans": {
+    "h_2c3c47a0a3eb51": {
+      "author": "AmirrezaJolani <amirreza.mameghani@pillar.it>"
+    }
+  },
+  "sessions": {
+    "s_98241cf29d641a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "577d27f2-f068-410a-8790-782fe4cb9ee0",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "AmirrezaJolani <amirreza.mameghani@pillar.it>"
+    }
+  }
+}
