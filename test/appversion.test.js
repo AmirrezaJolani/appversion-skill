@@ -134,3 +134,18 @@ test('propagate updates package.json and configured json files', () => {
   // files without a version field are left untouched
   assert.deepStrictEqual(JSON.parse(fs.readFileSync(noVersion, 'utf8')), { hello: 'world' });
 });
+
+test('stampCommit records the short hash from the runner', () => {
+  const d = av.template();
+  const changed = av.stampCommit(d, () => 'deadbee');
+  assert.strictEqual(changed, true);
+  assert.strictEqual(d.commit, 'deadbee');
+});
+
+test('stampCommit leaves commit unchanged when git is unavailable', () => {
+  const d = av.template();
+  d.commit = 'previous';
+  const changed = av.stampCommit(d, () => { throw new Error('not a git repo'); });
+  assert.strictEqual(changed, false);
+  assert.strictEqual(d.commit, 'previous');
+});

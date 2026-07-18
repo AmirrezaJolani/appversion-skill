@@ -2,6 +2,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 
 const SCHEMA_VERSION = '1.0.0';
 
@@ -137,4 +138,19 @@ function propagate(av, dir, opts) {
   }
 }
 
-module.exports = { SCHEMA_VERSION, template, avPath, writeJson, readAv, initFile, versionString, statusString, show, applyBump, today, applyBuild, applyStatus, refreshBadges, propagate };
+function defaultGitRunner(dir) {
+  return execSync('git rev-parse --short HEAD', { cwd: dir || process.cwd() })
+    .toString().trim();
+}
+
+function stampCommit(av, runner) {
+  try {
+    const hash = (runner || defaultGitRunner)();
+    if (hash) { av.commit = hash; return true; }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+module.exports = { SCHEMA_VERSION, template, avPath, writeJson, readAv, initFile, versionString, statusString, show, applyBump, today, applyBuild, applyStatus, refreshBadges, propagate, stampCommit };
