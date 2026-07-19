@@ -177,6 +177,10 @@ function main(argv) {
   try {
     switch (command) {
       case 'init': {
+        if (opts.dryRun) {
+          console.log(`would create ${avPath(opts.path)}`);
+          break;
+        }
         const created = initFile(opts.path);
         console.log(created ? avPath(opts.path) : 'appversion.json already exists');
         break;

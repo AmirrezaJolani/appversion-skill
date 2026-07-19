@@ -176,6 +176,41 @@ test('CLI --dry-run writes nothing', () => {
   assert.strictEqual(fs.readFileSync(path.join(dir, 'appversion.json'), 'utf8'), before);
 });
 
+test('CLI init --dry-run does not create appversion.json', () => {
+  const dir = tmp();
+  // exits 0 because runCli (execFileSync) throws on any non-zero exit code
+  runCli(['init', '--path', dir, '--dry-run']);
+  assert.strictEqual(fs.existsSync(path.join(dir, 'appversion.json')), false);
+});
+
+test('CLI bump --dry-run leaves appversion.json, package.json, and markdown badge untouched', () => {
+  const dir = tmp();
+  runCli(['init', '--path', dir]);
+
+  const pkgFile = path.join(dir, 'package.json');
+  fs.writeFileSync(pkgFile, JSON.stringify({ name: 'demo', version: '0.0.0' }, null, 2) + '\n');
+
+  const readmeFile = path.join(dir, 'README.md');
+  fs.writeFileSync(readmeFile,
+    '# Demo\n![version](https://img.shields.io/badge/version-0.0.0-green.svg)\n');
+
+  const avFile = path.join(dir, 'appversion.json');
+  const data = av.readAv(dir);
+  data.config.markdown = ['README.md'];
+  data.config.json = [];
+  av.writeJson(avFile, data);
+
+  const avBefore = fs.readFileSync(avFile, 'utf8');
+  const pkgBefore = fs.readFileSync(pkgFile, 'utf8');
+  const readmeBefore = fs.readFileSync(readmeFile, 'utf8');
+
+  runCli(['bump', 'minor', '--path', dir, '--dry-run']);
+
+  assert.strictEqual(fs.readFileSync(avFile, 'utf8'), avBefore);
+  assert.strictEqual(fs.readFileSync(pkgFile, 'utf8'), pkgBefore);
+  assert.strictEqual(fs.readFileSync(readmeFile, 'utf8'), readmeBefore);
+});
+
 test('CLI exits non-zero on unknown command', () => {
   assert.throws(() => runCli(['frobnicate']), /Command failed/);
 });
@@ -183,4 +218,10 @@ test('CLI exits non-zero on unknown command', () => {
 test('CLI exits non-zero when bumping without appversion.json', () => {
   const dir = tmp();
   assert.throws(() => runCli(['bump', 'patch', '--path', dir]), /Command failed/);
+});
+
+test('CLI exits non-zero when appversion.json is malformed', () => {
+  const dir = tmp();
+  fs.writeFileSync(path.join(dir, 'appversion.json'), '{ not json');
+  assert.throws(() => runCli(['show', 'version', '--path', dir]), /Command failed/);
 });
