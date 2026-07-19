@@ -153,4 +153,73 @@ function stampCommit(av, runner) {
   }
 }
 
-module.exports = { SCHEMA_VERSION, template, avPath, writeJson, readAv, initFile, versionString, statusString, show, applyBump, today, applyBuild, applyStatus, refreshBadges, propagate, stampCommit };
+function parseArgs(argv) {
+  const rest = argv.slice(2);
+  const opts = { path: process.cwd(), json: false, dryRun: false };
+  const positional = [];
+  for (let i = 0; i < rest.length; i++) {
+    const a = rest[i];
+    if (a === '--path') { opts.path = rest[++i]; }
+    else if (a === '--json') { opts.json = true; }
+    else if (a === '--dry-run') { opts.dryRun = true; }
+    else { positional.push(a); }
+  }
+  return { command: positional[0], args: positional.slice(1), opts };
+}
+
+function commitAv(av, opts) {
+  if (opts.dryRun) { console.log(`would write ${avPath(opts.path)}`); return; }
+  writeJson(avPath(opts.path), av);
+}
+
+function main(argv) {
+  const { command, args, opts } = parseArgs(argv);
+  try {
+    switch (command) {
+      case 'init': {
+        const created = initFile(opts.path);
+        console.log(created ? avPath(opts.path) : 'appversion.json already exists');
+        break;
+      }
+      case 'show': {
+        console.log(show(readAv(opts.path), args[0]));
+        break;
+      }
+      case 'bump': {
+        const data = readAv(opts.path);
+        applyBump(data, args[0]);
+        stampCommit(data, () => defaultGitRunner(opts.path));
+        propagate(data, opts.path, opts);
+        refreshBadges(data, opts.path, opts);
+        commitAv(data, opts);
+        console.log(opts.json ? show(data, 'full') : versionString(data));
+        break;
+      }
+      case 'build': {
+        const data = readAv(opts.path);
+        applyBuild(data);
+        commitAv(data, opts);
+        console.log(opts.json ? show(data, 'full') : JSON.stringify(data.build));
+        break;
+      }
+      case 'status': {
+        const data = readAv(opts.path);
+        applyStatus(data, args[0], args[1]);
+        refreshBadges(data, opts.path, opts);
+        commitAv(data, opts);
+        console.log(opts.json ? show(data, 'full') : statusString(data));
+        break;
+      }
+      default:
+        throw new Error(`unknown command: ${command || '(none)'} ` +
+          `(expected init|show|bump|build|status|tickets)`);
+    }
+  } catch (err) {
+    process.stderr.write(`appversion: ${err.message}\n`);
+    process.exit(1);
+  }
+}
+
+module.exports = { SCHEMA_VERSION, template, avPath, writeJson, readAv, initFile, versionString, statusString, show, applyBump, today, applyBuild, applyStatus, refreshBadges, propagate, stampCommit, parseArgs, main };
+
+if (require.main === module) main(process.argv);

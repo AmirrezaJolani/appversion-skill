@@ -149,3 +149,38 @@ test('stampCommit leaves commit unchanged when git is unavailable', () => {
   assert.strictEqual(changed, false);
   assert.strictEqual(d.commit, 'previous');
 });
+
+const { execFileSync } = require('child_process');
+const CLI = path.join(__dirname, '..', 'scripts', 'appversion.js');
+
+function runCli(args, opts) {
+  return execFileSync('node', [CLI, ...args], { encoding: 'utf8', ...opts });
+}
+
+test('CLI bump updates appversion.json and package.json end to end', () => {
+  const dir = tmp();
+  runCli(['init', '--path', dir]);
+  fs.writeFileSync(path.join(dir, 'package.json'),
+    JSON.stringify({ name: 'demo', version: '0.0.0' }, null, 2) + '\n');
+  const out = runCli(['bump', 'minor', '--path', dir]).trim();
+  assert.strictEqual(out, '0.1.0');
+  assert.strictEqual(av.readAv(dir).version.minor, 1);
+  assert.strictEqual(JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8')).version, '0.1.0');
+});
+
+test('CLI --dry-run writes nothing', () => {
+  const dir = tmp();
+  runCli(['init', '--path', dir]);
+  const before = fs.readFileSync(path.join(dir, 'appversion.json'), 'utf8');
+  runCli(['bump', 'major', '--path', dir, '--dry-run']);
+  assert.strictEqual(fs.readFileSync(path.join(dir, 'appversion.json'), 'utf8'), before);
+});
+
+test('CLI exits non-zero on unknown command', () => {
+  assert.throws(() => runCli(['frobnicate']), /Command failed/);
+});
+
+test('CLI exits non-zero when bumping without appversion.json', () => {
+  const dir = tmp();
+  assert.throws(() => runCli(['bump', 'patch', '--path', dir]), /Command failed/);
+});
