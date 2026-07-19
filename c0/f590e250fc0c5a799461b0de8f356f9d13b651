@@ -1,0 +1,36 @@
+scripts/trackers/plane.js
+  s_98241cf29d641a::t_7ee2f9a5cbe6a5 1-2
+scripts/trackers/clickup.js
+  s_98241cf29d641a::t_7ee2f9a5cbe6a5 1-2
+test/trackers.test.js
+  s_98241cf29d641a::t_2d66480f8762e1 1-49
+scripts/trackers/shortcut.js
+  s_98241cf29d641a::t_7ee2f9a5cbe6a5 1-2
+scripts/trackers/linear.js
+  s_98241cf29d641a::t_7ee2f9a5cbe6a5 1-2
+scripts/trackers/index.js
+  s_98241cf29d641a::t_803d48daa046d0 1-53
+scripts/trackers/jira.js
+  s_98241cf29d641a::t_7ee2f9a5cbe6a5 1-2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "c0f590e250fc0c5a799461b0de8f356f9d13b651",
+  "prompts": {},
+  "humans": {
+    "h_2c3c47a0a3eb51": {
+      "author": "AmirrezaJolani <amirreza.mameghani@pillar.it>"
+    }
+  },
+  "sessions": {
+    "s_98241cf29d641a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "577d27f2-f068-410a-8790-782fe4cb9ee0",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "AmirrezaJolani <amirreza.mameghani@pillar.it>"
+    }
+  }
+}
