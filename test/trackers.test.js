@@ -47,3 +47,39 @@ test('fetchTickets returns parsed tickets and drops nulls', async () => {
   assert.strictEqual(tickets.length, 1);
   assert.strictEqual(tickets[0].title, 'A');
 });
+
+const jira = require('../scripts/trackers/jira.js');
+
+function withFetch(stub, fn) {
+  const orig = global.fetch;
+  global.fetch = stub;
+  return Promise.resolve(fn()).finally(() => { global.fetch = orig; });
+}
+
+test('jira detectIds matches configured prefixes only', () => {
+  const p = jira({ host: 'https://x', keyPrefixes: ['PROJ'] });
+  assert.deepStrictEqual(p.detectIds('PROJ-12 and NOPE-9'), ['PROJ-12']);
+});
+
+test('jira getTicket parses the REST response and builds the url', async () => {
+  process.env.JIRA_EMAIL = 'me@x.com';
+  process.env.JIRA_API_TOKEN = 'tok';
+  const p = jira({ host: 'https://acme.atlassian.net', keyPrefixes: ['PROJ'] });
+  let calledUrl, calledAuth;
+  await withFetch(async (url, init) => {
+    calledUrl = url; calledAuth = init.headers.Authorization;
+    return { ok: true, json: async () => ({ fields: { summary: 'CSV export', issuetype: { name: 'Story' }, status: { name: 'Done' } } }) };
+  }, async () => {
+    const t = await p.getTicket('PROJ-142');
+    assert.deepStrictEqual(t, { id: 'PROJ-142', title: 'CSV export', type: 'Story', status: 'Done', url: 'https://acme.atlassian.net/browse/PROJ-142', provider: 'jira' });
+  });
+  assert.match(calledUrl, /\/rest\/api\/3\/issue\/PROJ-142/);
+  assert.match(calledAuth, /^Basic /);
+});
+
+test('jira getTicket returns null on HTTP error', async () => {
+  const p = jira({ host: 'https://acme.atlassian.net', keyPrefixes: ['PROJ'] });
+  await withFetch(async () => ({ ok: false, status: 404 }), async () => {
+    assert.strictEqual(await p.getTicket('PROJ-1'), null);
+  });
+});
