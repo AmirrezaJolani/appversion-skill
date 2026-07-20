@@ -108,3 +108,28 @@ test('plane getTicket returns null without a token', async () => {
   const p = plane({ host: 'https://plane.acme.dev', workspace: 'acme', keyPrefixes: ['APP'] });
   assert.strictEqual(await p.getTicket('APP-1'), null);
 });
+
+const shortcut = require('../scripts/trackers/shortcut.js');
+
+test('shortcut detectIds matches sc-<n> refs (case-insensitive)', () => {
+  const p = shortcut({});
+  assert.deepStrictEqual(p.detectIds('done sc-1234, SC-9 and #55'), ['sc-1234', 'SC-9']);
+});
+
+test('shortcut getTicket parses story response', async () => {
+  process.env.SHORTCUT_API_TOKEN = 'tok';
+  const p = shortcut({});
+  let calledUrl, calledToken;
+  await withFetch(async (url, init) => {
+    calledUrl = url; calledToken = init.headers['Shortcut-Token'];
+    return { ok: true, json: async () => ({ name: 'Fix crash', story_type: 'bug', completed: true, app_url: 'https://app.shortcut.com/o/story/1234' }) };
+  }, async () => {
+    const t = await p.getTicket('sc-1234');
+    assert.strictEqual(t.title, 'Fix crash');
+    assert.strictEqual(t.type, 'bug');
+    assert.strictEqual(t.status, 'completed');
+    assert.strictEqual(t.url, 'https://app.shortcut.com/o/story/1234');
+  });
+  assert.match(calledUrl, /\/api\/v3\/stories\/1234/);
+  assert.strictEqual(calledToken, 'tok');
+});
