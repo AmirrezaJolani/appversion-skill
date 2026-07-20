@@ -1,0 +1,26 @@
+scripts/trackers/jira.js
+  s_98241cf29d641a::t_7a3dc0362209f0 2-38
+test/trackers.test.js
+  s_98241cf29d641a::t_5d59c75253aeb3 50-85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "139e159d4f0e1332ce8b138e6a3adf8fa3e9d2fd",
+  "prompts": {},
+  "humans": {
+    "h_2c3c47a0a3eb51": {
+      "author": "AmirrezaJolani <amirreza.mameghani@pillar.it>"
+    }
+  },
+  "sessions": {
+    "s_98241cf29d641a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "577d27f2-f068-410a-8790-782fe4cb9ee0",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "AmirrezaJolani <amirreza.mameghani@pillar.it>"
+    }
+  }
+}
