@@ -133,3 +133,27 @@ test('shortcut getTicket parses story response', async () => {
   assert.match(calledUrl, /\/api\/v3\/stories\/1234/);
   assert.strictEqual(calledToken, 'tok');
 });
+
+const clickup = require('../scripts/trackers/clickup.js');
+
+test('clickup detectIds matches CU-<id> and configured custom prefixes', () => {
+  const p = clickup({ keyPrefixes: ['ABC'] });
+  assert.deepStrictEqual(p.detectIds('CU-8xy in ABC-42 not ZZZ-1').sort(), ['ABC-42', 'CU-8xy']);
+});
+
+test('clickup getTicket parses task response', async () => {
+  process.env.CLICKUP_API_TOKEN = 'tok';
+  const p = clickup({});
+  let calledUrl, calledAuth;
+  await withFetch(async (url, init) => {
+    calledUrl = url; calledAuth = init.headers.Authorization;
+    return { ok: true, json: async () => ({ name: 'Wrong total', status: { status: 'closed' }, url: 'https://app.clickup.com/t/8xy' }) };
+  }, async () => {
+    const t = await p.getTicket('CU-8xy');
+    assert.strictEqual(t.title, 'Wrong total');
+    assert.strictEqual(t.status, 'closed');
+    assert.strictEqual(t.provider, 'clickup');
+  });
+  assert.match(calledUrl, /\/api\/v2\/task\/8xy/);
+  assert.strictEqual(calledAuth, 'tok');
+});
