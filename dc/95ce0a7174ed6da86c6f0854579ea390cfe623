@@ -1,0 +1,29 @@
+test/appversion.test.js
+  s_98241cf29d641a::t_47646a487ecd74 228-246
+scripts/appversion.js
+  s_98241cf29d641a::t_59d94bdfb26ee9 6
+  s_98241cf29d641a::t_b5b13edd745ac4 235-247
+  s_98241cf29d641a::t_3422aad8b6c876 157-173
+  s_98241cf29d641a::t_50e2866b71e2eb 258
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "dc95ce0a7174ed6da86c6f0854579ea390cfe623",
+  "prompts": {},
+  "humans": {
+    "h_2c3c47a0a3eb51": {
+      "author": "AmirrezaJolani <amirreza.mameghani@pillar.it>"
+    }
+  },
+  "sessions": {
+    "s_98241cf29d641a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "577d27f2-f068-410a-8790-782fe4cb9ee0",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "AmirrezaJolani <amirreza.mameghani@pillar.it>"
+    }
+  }
+}
