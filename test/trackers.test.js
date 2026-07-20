@@ -83,3 +83,28 @@ test('jira getTicket returns null on HTTP error', async () => {
     assert.strictEqual(await p.getTicket('PROJ-1'), null);
   });
 });
+
+const plane = require('../scripts/trackers/plane.js');
+
+test('plane getTicket parses response and builds url from host/workspace', async () => {
+  process.env.PLANE_API_TOKEN = 'tok';
+  const p = plane({ host: 'https://plane.acme.dev', workspace: 'acme', keyPrefixes: ['APP'] });
+  let calledUrl, calledKey;
+  await withFetch(async (url, init) => {
+    calledUrl = url; calledKey = init.headers['X-API-Key'];
+    return { ok: true, json: async () => ({ name: 'Bulk import', priority: 'high', state_detail: { name: 'Done' } }) };
+  }, async () => {
+    const t = await p.getTicket('APP-88');
+    assert.strictEqual(t.title, 'Bulk import');
+    assert.strictEqual(t.status, 'Done');
+    assert.strictEqual(t.provider, 'plane');
+  });
+  assert.match(calledUrl, /acme/);
+  assert.strictEqual(calledKey, 'tok');
+});
+
+test('plane getTicket returns null without a token', async () => {
+  delete process.env.PLANE_API_TOKEN;
+  const p = plane({ host: 'https://plane.acme.dev', workspace: 'acme', keyPrefixes: ['APP'] });
+  assert.strictEqual(await p.getTicket('APP-1'), null);
+});
