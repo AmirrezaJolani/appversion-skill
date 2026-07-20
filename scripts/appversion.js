@@ -3,6 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
+const trackers = require('./trackers');
 
 const SCHEMA_VERSION = '1.0.0';
 
@@ -153,6 +154,23 @@ function stampCommit(av, runner) {
   }
 }
 
+async function ticketsCommand({ ids, detectText, providers }) {
+  if (!providers || !providers.length) return [];
+  let items;
+  if (detectText != null) {
+    items = trackers.detectTickets(detectText, providers);
+  } else {
+    items = (ids || [])
+      .map((id) => ({ id, provider: trackers.routeId(id, providers) }))
+      .filter((it) => it.provider);
+  }
+  return trackers.fetchTickets(items);
+}
+
+function readStdin() {
+  try { return require('fs').readFileSync(0, 'utf8'); } catch { return ''; }
+}
+
 function parseArgs(argv) {
   const rest = argv.slice(2);
   const opts = { path: process.cwd(), json: false, dryRun: false };
@@ -214,6 +232,19 @@ function main(argv) {
         console.log(opts.json ? show(data, 'full') : statusString(data));
         break;
       }
+      case 'tickets': {
+        const data = readAv(opts.path);
+        const providers = trackers.providersFor(data.config.tracker);
+        const detect = args[0] === '--detect';
+        const p = ticketsCommand({
+          ids: detect ? [] : args,
+          detectText: detect ? readStdin() : null,
+          providers,
+        });
+        p.then((list) => console.log(JSON.stringify(list, null, 2)))
+         .catch((err) => { process.stderr.write(`appversion: ${err.message}\n`); process.exit(1); });
+        break;
+      }
       default:
         throw new Error(`unknown command: ${command || '(none)'} ` +
           `(expected init|show|bump|build|status|tickets)`);
@@ -224,6 +255,6 @@ function main(argv) {
   }
 }
 
-module.exports = { SCHEMA_VERSION, template, avPath, writeJson, readAv, initFile, versionString, statusString, show, applyBump, today, applyBuild, applyStatus, refreshBadges, propagate, stampCommit, parseArgs, main };
+module.exports = { SCHEMA_VERSION, template, avPath, writeJson, readAv, initFile, versionString, statusString, show, applyBump, today, applyBuild, applyStatus, refreshBadges, propagate, stampCommit, parseArgs, ticketsCommand, main };
 
 if (require.main === module) main(process.argv);

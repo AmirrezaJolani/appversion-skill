@@ -225,3 +225,22 @@ test('CLI exits non-zero when appversion.json is malformed', () => {
   fs.writeFileSync(path.join(dir, 'appversion.json'), '{ not json');
   assert.throws(() => runCli(['show', 'version', '--path', dir]), /Command failed/);
 });
+
+test('ticketsCommand fetches via injected providers (detect mode)', async () => {
+  const providers = [{
+    name: 'fake',
+    keyPrefixes: ['FAKE'],
+    detectIds(t) { return [...new Set(String(t).match(/\bFAKE-\d+\b/g) || [])]; },
+    async getTicket(id) { return { id, title: 't', type: 'x', status: 's', url: 'u', provider: 'fake' }; },
+  }];
+  const out = await av.ticketsCommand({ detectText: 'see FAKE-7', providers });
+  assert.strictEqual(out.length, 1);
+  assert.strictEqual(out[0].id, 'FAKE-7');
+});
+
+test('CLI tickets prints [] when no tracker is configured', () => {
+  const dir = tmp();
+  runCli(['init', '--path', dir]);
+  const out = runCli(['tickets', 'PROJ-1', '--path', dir]).trim();
+  assert.strictEqual(out, '[]');
+});
