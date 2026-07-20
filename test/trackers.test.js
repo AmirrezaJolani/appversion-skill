@@ -157,3 +157,24 @@ test('clickup getTicket parses task response', async () => {
   assert.match(calledUrl, /\/api\/v2\/task\/8xy/);
   assert.strictEqual(calledAuth, 'tok');
 });
+
+const linear = require('../scripts/trackers/linear.js');
+
+test('linear getTicket posts GraphQL and parses the issue', async () => {
+  process.env.LINEAR_API_KEY = 'lin_key';
+  const p = linear({ keyPrefixes: ['COR'] });
+  let calledInit;
+  await withFetch(async (url, init) => {
+    calledInit = init;
+    return { ok: true, json: async () => ({ data: { issue: { identifier: 'COR-494', title: 'Export', url: 'https://linear.app/x/issue/COR-494', state: { name: 'Done' }, labels: { nodes: [{ name: 'feature' }] } } } }) };
+  }, async () => {
+    const t = await p.getTicket('COR-494');
+    assert.strictEqual(t.title, 'Export');
+    assert.strictEqual(t.status, 'Done');
+    assert.strictEqual(t.type, 'feature');
+    assert.strictEqual(t.url, 'https://linear.app/x/issue/COR-494');
+  });
+  assert.strictEqual(calledInit.method, 'POST');
+  assert.strictEqual(calledInit.headers.Authorization, 'lin_key');
+  assert.match(calledInit.body, /COR-494/);
+});
