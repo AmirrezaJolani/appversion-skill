@@ -31,6 +31,11 @@ The user asks to bump a version, cut/tag a release, or "release vX".
   structure, group by conventional-commit type.
 - Detect Conventional Commits. Map `feat!`/`BREAKING CHANGE` → major, `feat` → minor, everything
   else (`fix`, `chore`, ...) → patch. If not conventional, read each commit and infer intent.
+- **Tracker enrichment (optional).** If `appversion.json` has `config.tracker`, pull real ticket
+  context so the recommendation and changelog use titles/types instead of raw commit text:
+  `git log <lastTag>..HEAD --pretty=%s%n%b | node scripts/appversion.js tickets --detect`
+  Also detect IDs in branch names and PR bodies. This is best-effort: on any error or with no
+  tracker/token, skip it and use commit text (see `references/tracker-integration.md`).
 
 ### 3. Recommend (GATE 1)
 Present an **itemized** recommendation and WAIT for explicit approval. Format:
@@ -50,6 +55,9 @@ Since <lastVersion> — <N> commits across <M> PRs/branches:
 
 Bump math is **standard semver**: the itemized counts are rationale; the actual bump is a single
 step at the highest level present. `major` (any breaking change) wins over any minors/patches.
+
+When ticket context is available, annotate each item with `[<provider> <ID> · <type> · <status>]`
+and route its changelog link to that provider's URL.
 
 ### 4. Apply the bump
 After approval:
