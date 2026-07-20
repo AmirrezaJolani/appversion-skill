@@ -1,0 +1,12 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "feab5485cd4e8fcc493f17b1a36bc02acbc844d3",
+  "prompts": {},
+  "humans": {
+    "h_2c3c47a0a3eb51": {
+      "author": "AmirrezaJolani <amirreza.mameghani@pillar.it>"
+    }
+  }
+}
