@@ -1,0 +1,52 @@
+.opencode/INSTALL.md
+  s_98241cf29d641a::t_6f8cc5b2a57623 1-24
+skills/appversion/SKILL.md
+  s_98241cf29d641a::t_8c5a2b6eee2bc8 9-83,92,96,100,103
+package.json
+  s_98241cf29d641a::t_9ab27d1486c4c7 6-8
+AGENTS.md
+  s_98241cf29d641a::t_a378fc513471d5 5-9,11-22
+.github/copilot-instructions.md
+  s_98241cf29d641a::t_e644767464ef7e 1-18
+LICENSE
+  s_98241cf29d641a::t_34836817ea20c0 1-21
+.claude-plugin/plugin.json
+  s_98241cf29d641a::t_b9af92ee30f913 1-24
+test/appversion.test.js
+  s_98241cf29d641a::t_207fd59eaa86cd 7,154
+GEMINI.md
+  s_98241cf29d641a::t_d84fb203c41a7a 1
+.cursor-plugin/plugin.json
+  s_98241cf29d641a::t_b5455c8c62afd2 1-23
+.codex-plugin/plugin.json
+  s_98241cf29d641a::t_649f154307c547 1-39
+README.md
+  s_98241cf29d641a::t_60ceb4b4919dcc 8-11,16-25,27,29-33,38-40,42,49-50
+.claude-plugin/marketplace.json
+  s_98241cf29d641a::t_3839424bd863ee 1-13
+gemini-extension.json
+  s_98241cf29d641a::t_d88a779d5aac16 1-6
+test/trackers.test.js
+  s_98241cf29d641a::t_207fd59eaa86cd 4,51,87,112,137,161
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "58ffeec5de6ae7208058f21aa54949b16160b0e9",
+  "prompts": {},
+  "humans": {
+    "h_2c3c47a0a3eb51": {
+      "author": "AmirrezaJolani <amirreza.mameghani@pillar.it>"
+    }
+  },
+  "sessions": {
+    "s_98241cf29d641a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "577d27f2-f068-410a-8790-782fe4cb9ee0",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "AmirrezaJolani <amirreza.mameghani@pillar.it>"
+    }
+  }
+}
