@@ -1,0 +1,13 @@
+{
+  "name": "appversion-skill",
+  "owner": {
+    "name": "AmirrezaJolani",
+    "url": "https://github.com/AmirrezaJolani"
+  },
+  "plugins": [
+    {
+      "name": "appversion",
+      "source": "./"
+    }
+  ]
+}

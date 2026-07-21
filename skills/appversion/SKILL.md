@@ -6,19 +6,32 @@ description: Use when the user wants to bump a version, cut a release, or tag a 
 # AppVersion release skill
 
 Manage an application's version (SemVer) via `appversion.json`, then changelog, tag, and GitHub
-Release. Deterministic mechanics live in `scripts/appversion.js` (run it; do not reimplement its
-math). This procedure is agent-neutral: every step is a shell command, a file read, or a git/gh
-action.
+Release. Deterministic mechanics live in this skill's `scripts/appversion.js` (run it; do not
+reimplement its math). This procedure is agent-neutral: every step is a shell command, a file
+read, or a git/gh action.
 
 ## When to use
 The user asks to bump a version, cut/tag a release, or "release vX".
 
 ## Procedure
 
+### 0. Locate the tool
+The helper lives in **this skill's own directory** (the folder containing this `SKILL.md`), at
+`scripts/appversion.js`. You are running inside the *user's project*, not this folder, so resolve
+the script's path once from the skill directory and reuse it:
+
+```
+APPVERSION="<this skill's directory>/scripts/appversion.js"   # e.g. ~/.claude/skills/appversion/scripts/appversion.js
+```
+
+Every `node "$APPVERSION" …` command below runs the script from the skill directory but operates on
+the user's project via `--path .` (the current working directory). The `references/*.md` files
+mentioned below are likewise in this skill's directory.
+
 ### 1. Preflight
 - Confirm you are in a git repo: `git rev-parse --is-inside-work-tree`.
-- Ensure `appversion.json` exists: `node scripts/appversion.js show version --path .`
-  If it errors, offer to create it: `node scripts/appversion.js init` — then ask the user for the
+- Ensure `appversion.json` exists: `node "$APPVERSION" show version --path .`
+  If it errors, offer to create it: `node "$APPVERSION" init --path .` — then ask the user for the
   starting version instead of assuming `0.0.0`.
 - Determine the **last version**, in order: latest `v*` tag (`git describe --tags --match 'v*' --abbrev=0`),
   else `appversion.json`, else `package.json`.
@@ -33,7 +46,7 @@ The user asks to bump a version, cut/tag a release, or "release vX".
   else (`fix`, `chore`, ...) → patch. If not conventional, read each commit and infer intent.
 - **Tracker enrichment (optional).** If `appversion.json` has `config.tracker`, pull real ticket
   context so the recommendation and changelog use titles/types instead of raw commit text:
-  `git log <lastTag>..HEAD --pretty=%s%n%b | node scripts/appversion.js tickets --detect`
+  `git log <lastTag>..HEAD --pretty=%s%n%b | node "$APPVERSION" tickets --detect --path .`
   Also detect IDs in branch names and PR bodies. This is best-effort: on any error or with no
   tracker/token, skip it and use commit text (see `references/tracker-integration.md`).
 
@@ -62,12 +75,12 @@ and route its changelog link to that provider's URL.
 ### 4. Apply the bump
 After approval:
 ```
-node scripts/appversion.js bump <level> --path .
+node "$APPVERSION" bump <level> --path .
 ```
 This updates `appversion.json`, `package.json`, every file in `config.json`, and badges in
 `config.markdown`, and stamps the commit hash.
 
-For a pre-release or promotion, also run `node scripts/appversion.js status <stable|rc|beta|alpha> [n]`.
+For a pre-release or promotion, also run `node "$APPVERSION" status <stable|rc|beta|alpha> [n] --path .`.
 
 ### 5. Changelog (GATE 2)
 Build a new `## [x.y.z] - YYYY-MM-DD` section from the grouped commits, following

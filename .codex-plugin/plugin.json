@@ -1,0 +1,39 @@
+{
+  "name": "appversion",
+  "version": "0.1.0",
+  "description": "Analyze commits, recommend and apply a SemVer bump to appversion.json + package.json, update the changelog, and cut a tagged GitHub Release. Optional read-only enrichment from Jira, Plane, Shortcut, ClickUp, Linear.",
+  "author": {
+    "name": "AmirrezaJolani",
+    "url": "https://github.com/AmirrezaJolani"
+  },
+  "homepage": "https://github.com/AmirrezaJolani/appversion-skill",
+  "repository": "https://github.com/AmirrezaJolani/appversion-skill",
+  "license": "MIT",
+  "keywords": [
+    "skills",
+    "semver",
+    "versioning",
+    "changelog",
+    "release",
+    "git",
+    "github"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "AppVersion",
+    "shortDescription": "SemVer bump, changelog, tag, and GitHub Release for coding agents",
+    "longDescription": "Guided release flow: analyze commits since the last version, recommend an itemized SemVer bump, apply it to appversion.json + package.json, update the changelog, and cut a tagged GitHub Release behind explicit confirmation gates. Optional read-only enrichment from Jira, Plane, Shortcut, ClickUp, and Linear.",
+    "developerName": "AmirrezaJolani",
+    "category": "Coding",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Cut a release for this project.",
+      "Bump the version and update the changelog."
+    ],
+    "websiteURL": "https://github.com/AmirrezaJolani/appversion-skill"
+  }
+}

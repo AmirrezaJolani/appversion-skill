@@ -1,7 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert');
-const reg = require('../scripts/trackers/index.js');
+const reg = require('../skills/appversion/scripts/trackers/index.js');
 
 // A fake provider factory shaped like a real adapter.
 function fakeFactory(name, prefix, store) {
@@ -48,7 +48,7 @@ test('fetchTickets returns parsed tickets and drops nulls', async () => {
   assert.strictEqual(tickets[0].title, 'A');
 });
 
-const jira = require('../scripts/trackers/jira.js');
+const jira = require('../skills/appversion/scripts/trackers/jira.js');
 
 function withFetch(stub, fn) {
   const orig = global.fetch;
@@ -84,7 +84,7 @@ test('jira getTicket returns null on HTTP error', async () => {
   });
 });
 
-const plane = require('../scripts/trackers/plane.js');
+const plane = require('../skills/appversion/scripts/trackers/plane.js');
 
 test('plane getTicket parses response and builds url from host/workspace', async () => {
   process.env.PLANE_API_TOKEN = 'tok';
@@ -109,7 +109,7 @@ test('plane getTicket returns null without a token', async () => {
   assert.strictEqual(await p.getTicket('APP-1'), null);
 });
 
-const shortcut = require('../scripts/trackers/shortcut.js');
+const shortcut = require('../skills/appversion/scripts/trackers/shortcut.js');
 
 test('shortcut detectIds matches sc-<n> refs (case-insensitive)', () => {
   const p = shortcut({});
@@ -134,7 +134,7 @@ test('shortcut getTicket parses story response', async () => {
   assert.strictEqual(calledToken, 'tok');
 });
 
-const clickup = require('../scripts/trackers/clickup.js');
+const clickup = require('../skills/appversion/scripts/trackers/clickup.js');
 
 test('clickup detectIds matches CU-<id> and configured custom prefixes', () => {
   const p = clickup({ keyPrefixes: ['ABC'] });
@@ -158,7 +158,7 @@ test('clickup getTicket parses task response', async () => {
   assert.strictEqual(calledAuth, 'tok');
 });
 
-const linear = require('../scripts/trackers/linear.js');
+const linear = require('../skills/appversion/scripts/trackers/linear.js');
 
 test('linear getTicket posts GraphQL and parses the issue', async () => {
   process.env.LINEAR_API_KEY = 'lin_key';

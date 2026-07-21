@@ -4,7 +4,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const av = require('../scripts/appversion.js');
+const av = require('../skills/appversion/scripts/appversion.js');
 
 function tmp() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'av-'));
@@ -151,7 +151,7 @@ test('stampCommit leaves commit unchanged when git is unavailable', () => {
 });
 
 const { execFileSync } = require('child_process');
-const CLI = path.join(__dirname, '..', 'scripts', 'appversion.js');
+const CLI = path.join(__dirname, '..', 'skills', 'appversion', 'scripts', 'appversion.js');
 
 function runCli(args, opts) {
   return execFileSync('node', [CLI, ...args], { encoding: 'utf8', ...opts });
