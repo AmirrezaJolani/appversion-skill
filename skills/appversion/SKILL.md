@@ -97,15 +97,19 @@ the wording before continuing.
 ```
 git add appversion.json package.json CHANGELOG.md <any config.json/markdown files>
 git commit -m "chore(release): v<x.y.z>"
-git tag -a v<x.y.z> -m "<changelog section body>"
+node "$APPVERSION" tag --message "<changelog section body>" --path .
 ```
+`tag` reads the version from `appversion.json` and creates the annotated tag `v<x.y.z>` (it refuses
+to clobber an existing tag). Add `--push` to also push it.
 
 ### 7. Push + Release (GATE 3)
 This is outward-facing and effectively permanent. Confirm first, then:
 ```
-git push && git push origin v<x.y.z>
-gh release create v<x.y.z> --notes-file <file with the section body>
+node "$APPVERSION" release --notes-file <file with the section body> --path .
 ```
+`release` pushes the tag and creates the GitHub Release (needs `gh`). Preview first with `--dry-run`,
+which prints the exact `gh` command without running it. Equivalent by hand:
+`git push origin v<x.y.z> && gh release create v<x.y.z> --notes-file <f>`.
 
 ## Graceful degradation
 - No remote → create the local tag only; skip push + Release; tell the user.

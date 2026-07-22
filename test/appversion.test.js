@@ -319,3 +319,61 @@ test('installHook writes an executable pre-push hook that runs check', () => {
   assert.match(body, /check/);
   assert.ok((fs.statSync(hook).mode & 0o111) !== 0); // executable bit set
 });
+
+// ---- git tag + GitHub Release ----
+
+test('ghReleaseArgs builds the gh argv (notes-file, notes, or --generate-notes)', () => {
+  assert.deepStrictEqual(av.ghReleaseArgs('v1.2.0', { notesFile: 'N.md' }),
+    ['release', 'create', 'v1.2.0', '--notes-file', 'N.md']);
+  assert.deepStrictEqual(av.ghReleaseArgs('v1.2.0', { notes: 'hi' }),
+    ['release', 'create', 'v1.2.0', '--notes', 'hi']);
+  assert.deepStrictEqual(av.ghReleaseArgs('v1.2.0'),
+    ['release', 'create', 'v1.2.0', '--generate-notes']);
+});
+
+function gitRepoAt(version) {
+  const dir = tmp();
+  execFileSync('git', ['init', '-q', dir]);
+  execFileSync('git', ['-C', dir, 'config', 'user.email', 't@t.co']);
+  execFileSync('git', ['-C', dir, 'config', 'user.name', 't']);
+  runCli(['init', '--path', dir]);
+  const data = av.readAv(dir);
+  const [maj, min, pat] = version.split('.').map(Number);
+  data.version = { major: maj, minor: min, patch: pat };
+  av.writeJson(path.join(dir, 'appversion.json'), data);
+  fs.writeFileSync(path.join(dir, 'f.txt'), 'x');
+  execFileSync('git', ['-C', dir, 'add', '-A']);
+  execFileSync('git', ['-C', dir, 'commit', '-qm', 'chore: base']);
+  return dir;
+}
+
+test('createTag makes an annotated tag and refuses to clobber an existing one', () => {
+  const dir = gitRepoAt('1.2.0');
+  av.createTag('v1.2.0', 'Release v1.2.0', dir);
+  assert.ok(av.gitTagExists('v1.2.0', dir));
+  assert.throws(() => av.createTag('v1.2.0', 'again', dir), /already exists/);
+});
+
+test('CLI tag creates v<version> from appversion.json', () => {
+  const dir = gitRepoAt('2.3.4');
+  const out = runCli(['tag', '--path', dir]).trim();
+  assert.strictEqual(out, 'tagged v2.3.4');
+  assert.ok(av.gitTagExists('v2.3.4', dir));
+});
+
+test('CLI tag --dry-run creates no tag', () => {
+  const dir = gitRepoAt('0.5.0');
+  const out = runCli(['tag', '--dry-run', '--push', '--path', dir]).trim();
+  assert.match(out, /would tag v0\.5\.0 and push it/);
+  assert.strictEqual(av.gitTagExists('v0.5.0', dir), false);
+});
+
+test('CLI tag --push pushes the tag to origin', () => {
+  const remote = tmp();
+  execFileSync('git', ['init', '-q', '--bare', remote]);
+  const dir = gitRepoAt('1.0.0');
+  execFileSync('git', ['-C', dir, 'remote', 'add', 'origin', remote]);
+  runCli(['tag', '--push', '--path', dir]);
+  const remoteTags = execFileSync('git', ['-C', remote, 'tag', '--list'], { encoding: 'utf8' }).trim();
+  assert.strictEqual(remoteTags, 'v1.0.0');
+});

@@ -60,6 +60,21 @@ node skills/appversion/scripts/appversion.js install-hook --path .
 `bump --auto` maps `feat`→minor, `fix`→patch, `feat!`/`BREAKING`→major. The `install-hook` guard is
 read-only — it only blocks a push when versions are out of sync; it never bumps or pushes for you.
 
+## Tag + GitHub Release
+
+```bash
+# create the annotated tag v<version> from appversion.json (won't clobber an existing tag)
+node skills/appversion/scripts/appversion.js tag --push --path .
+
+# push the tag + cut a GitHub Release (needs gh); preview first with --dry-run
+node skills/appversion/scripts/appversion.js release --notes-file NOTES.md --dry-run --path .
+node skills/appversion/scripts/appversion.js release --notes-file NOTES.md --path .
+```
+
+So the whole flow is scriptable end to end: `bump --auto` → commit → `tag` → `release`. The
+outward-facing steps (`--push`, `release`) only run when you invoke them — nothing pushes or
+releases on its own.
+
 ## Test
 ```bash
 npm test   # == node --test

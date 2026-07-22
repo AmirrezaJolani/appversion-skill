@@ -224,6 +224,40 @@ function installHook(dir) {
   return hookPath;
 }
 
+// ---- git tag + GitHub Release ----
+
+function gitTagExists(tag, dir) {
+  try {
+    const out = execFileSync('git', ['tag', '--list', tag], { cwd: dir || process.cwd() }).toString().trim();
+    return out === tag;
+  } catch { return false; }
+}
+
+function createTag(tag, message, dir) {
+  if (gitTagExists(tag, dir)) throw new Error(`tag ${tag} already exists`);
+  execFileSync('git', ['tag', '-a', tag, '-m', message || `Release ${tag}`], { cwd: dir || process.cwd() });
+  return tag;
+}
+
+function pushTag(tag, dir) {
+  execFileSync('git', ['push', 'origin', tag], { cwd: dir || process.cwd(), stdio: ['ignore', 'pipe', 'pipe'] });
+  return tag;
+}
+
+function ghAvailable() {
+  try { execFileSync('gh', ['--version'], { stdio: 'ignore' }); return true; }
+  catch { return false; }
+}
+
+// Pure: build the `gh release create` argument vector (unit-testable without invoking gh)
+function ghReleaseArgs(tag, { notesFile, notes } = {}) {
+  const a = ['release', 'create', tag];
+  if (notesFile) a.push('--notes-file', notesFile);
+  else if (notes) a.push('--notes', notes);
+  else a.push('--generate-notes');
+  return a;
+}
+
 async function ticketsCommand({ ids, detectText, providers }) {
   if (!providers || !providers.length) return [];
   let items;
@@ -353,9 +387,37 @@ function main(argv) {
         console.log(`installed pre-push hook at ${installHook(opts.path)}`);
         break;
       }
+      case 'tag': {
+        const data = readAv(opts.path);
+        const tag = `v${versionString(data)}`;
+        const push = args.includes('--push');
+        if (opts.dryRun) { console.log(`would tag ${tag}${push ? ' and push it' : ''}`); break; }
+        const mi = args.indexOf('--message');
+        createTag(tag, mi >= 0 ? args[mi + 1] : `Release ${tag}`, opts.path);
+        if (push) pushTag(tag, opts.path);
+        console.log(push ? `tagged and pushed ${tag}` : `tagged ${tag}`);
+        break;
+      }
+      case 'release': {
+        const data = readAv(opts.path);
+        const tag = `v${versionString(data)}`;
+        const nfi = args.indexOf('--notes-file');
+        const ni = args.indexOf('--notes');
+        const ghArgs = ghReleaseArgs(tag, {
+          notesFile: nfi >= 0 ? args[nfi + 1] : undefined,
+          notes: ni >= 0 ? args[ni + 1] : undefined,
+        });
+        if (opts.dryRun) { console.log(`would release ${tag} via: gh ${ghArgs.join(' ')}`); break; }
+        if (!ghAvailable()) throw new Error('gh CLI not found or not on PATH; install it or create the Release manually');
+        if (!gitTagExists(tag, opts.path)) createTag(tag, `Release ${tag}`, opts.path);
+        pushTag(tag, opts.path);
+        execFileSync('gh', ghArgs, { cwd: opts.path, stdio: ['ignore', 'pipe', 'pipe'] });
+        console.log(`released ${tag}`);
+        break;
+      }
       default:
         throw new Error(`unknown command: ${command || '(none)'} ` +
-          `(expected init|show|bump|build|status|tickets|check|sync|install-hook)`);
+          `(expected init|show|bump|build|status|tickets|check|sync|install-hook|tag|release)`);
     }
   } catch (err) {
     process.stderr.write(`appversion: ${err.message}\n`);
@@ -363,6 +425,6 @@ function main(argv) {
   }
 }
 
-module.exports = { SCHEMA_VERSION, template, avPath, writeJson, readAv, initFile, versionString, statusString, show, applyBump, today, applyBuild, applyStatus, refreshBadges, propagate, stampCommit, inferLevel, lastVersionRef, commitsSince, checkSync, installHook, parseArgs, ticketsCommand, main };
+module.exports = { SCHEMA_VERSION, template, avPath, writeJson, readAv, initFile, versionString, statusString, show, applyBump, today, applyBuild, applyStatus, refreshBadges, propagate, stampCommit, inferLevel, lastVersionRef, commitsSince, checkSync, installHook, gitTagExists, createTag, pushTag, ghAvailable, ghReleaseArgs, parseArgs, ticketsCommand, main };
 
 if (require.main === module) main(process.argv);

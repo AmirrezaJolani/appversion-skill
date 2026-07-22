@@ -9,7 +9,7 @@ release, or tag a release:
 2. Run the deterministic mechanics with the bundled zero-dependency Node script instead of
    reimplementing version math:
    ```
-   node skills/appversion/scripts/appversion.js <init|show|bump|build|status|tickets|check|sync|install-hook> --path .
+   node skills/appversion/scripts/appversion.js <init|show|bump|build|status|tickets|check|sync|install-hook|tag|release> --path .
    ```
    `--path .` targets the user's project (the current working directory).
 3. Consult [`skills/appversion/references/`](../skills/appversion/references/) for the
