@@ -1,0 +1,31 @@
+skills/appversion/SKILL.md
+  s_98241cf29d641a::t_4d43bdafe7e279 100,102-103,108,110-112
+skills/appversion/scripts/appversion.js
+  s_98241cf29d641a::t_d23b807a341cd2 390-417,420
+  s_98241cf29d641a::t_dd26b042cc1093 227-260
+  s_98241cf29d641a::t_4f24755c2b9eac 428
+README.md
+  s_98241cf29d641a::t_eb4fda093dc72b 63-77
+.github/copilot-instructions.md
+  s_98241cf29d641a::t_7ec22d23adbe7d 12
+AGENTS.md
+  s_98241cf29d641a::t_ec7a696c44d889 8-9
+test/appversion.test.js
+  s_98241cf29d641a::t_360691289a6f37 322-379
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "ba91a7a1961b01fa286730e7e573ae9d240f39b0",
+  "prompts": {},
+  "sessions": {
+    "s_98241cf29d641a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "577d27f2-f068-410a-8790-782fe4cb9ee0",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "AmirrezaJolani <amirreza.jolani1998@gmail.com>"
+    }
+  }
+}
