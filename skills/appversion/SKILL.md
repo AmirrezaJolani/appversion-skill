@@ -80,6 +80,11 @@ node "$APPVERSION" bump <level> --path .
 This updates `appversion.json`, `package.json`, every file in `config.json`, and badges in
 `config.markdown`, and stamps the commit hash.
 
+If the repo uses Conventional Commits and the user wants it decided automatically, you may instead
+run `node "$APPVERSION" bump --auto --path .` — it reads the commits since the last tag, picks the
+level itself (`feat`→minor, `fix`→patch, `feat!`/`BREAKING`→major), and applies it. Still show the
+user which level it chose and why.
+
 For a pre-release or promotion, also run `node "$APPVERSION" status <stable|rc|beta|alpha> [n] --path .`.
 
 ### 5. Changelog (GATE 2)
@@ -107,3 +112,20 @@ gh release create v<x.y.z> --notes-file <file with the section body>
 - `gh` missing/unauthenticated (`gh auth status`) → skip the Release; print the manual command.
 - No `package.json` → the bump touches `appversion.json` (+ `config.json`) only.
 - Never push or create a Release without passing GATE 3.
+
+## Automatic & enforced mode
+
+For users whose pain is *forgetting* to bump or *mis-guessing* the level, the tool has three extra
+commands. Offer to set these up.
+
+- **Decide + apply for me:** `node "$APPVERSION" bump --auto --path .` — infers the level from
+  Conventional Commits since the last tag and applies it (package.json included). No prompt; report
+  the chosen level. Good inside a release script or CI.
+- **Never leave package.json behind:** `node "$APPVERSION" check --path .` verifies `package.json`
+  (and every `config.json`) matches `appversion.json`, exiting non-zero on drift. Wire it into CI, or
+  install it as a git guard: `node "$APPVERSION" install-hook --path .` writes a **pre-push hook**
+  that runs `check`, so a forgotten sync *fails the push* instead of shipping.
+- **Repair drift:** `node "$APPVERSION" sync --path .` rewrites `package.json`/`config.json` to the
+  current `appversion.json` version (no bump) — the fix when `check` fails.
+
+Enforcement is read-only and blocks nothing but a drifted push; it never bumps or pushes on its own.
