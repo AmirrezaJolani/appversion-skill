@@ -17,8 +17,7 @@ Codex, Cursor, opencode, and GitHub Copilot.
 
 **Claude Code — as a plugin (self-installing marketplace):**
 ```
-/plugin marketplace add AmirrezaJolani/appversion-skill
-/plugin install appversion@appversion-skill
+npx skills add AmirrezaJolani/appversion-skill --skill appversion
 ```
 (Run these from an interactive `claude` terminal.)
 
