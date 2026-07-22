@@ -244,3 +244,78 @@ test('CLI tickets prints [] when no tracker is configured', () => {
   const out = runCli(['tickets', 'PROJ-1', '--path', dir]).trim();
   assert.strictEqual(out, '[]');
 });
+
+// ---- versioning intelligence: infer level + enforce sync ----
+
+test('inferLevel maps conventional commits to a semver level', () => {
+  assert.strictEqual(av.inferLevel(['feat: add export']), 'minor');
+  assert.strictEqual(av.inferLevel(['fix: off-by-one']), 'patch');
+  assert.strictEqual(av.inferLevel(['chore: deps', 'feat: thing']), 'minor'); // highest wins
+  assert.strictEqual(av.inferLevel(['feat!: drop old api']), 'major');
+  assert.strictEqual(av.inferLevel(['fix: x\n\nBREAKING CHANGE: nope']), 'major');
+  assert.strictEqual(av.inferLevel(['refactor: tidy']), 'patch'); // commits exist -> at least patch
+  assert.strictEqual(av.inferLevel([]), null); // nothing to release
+});
+
+test('checkSync flags package.json that drifts from appversion.json, passes when equal', () => {
+  const dir = tmp();
+  runCli(['init', '--path', dir]);
+  fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ version: '0.0.0' }, null, 2));
+  assert.strictEqual(av.checkSync(av.readAv(dir), dir).length, 0); // both 0.0.0
+
+  const data = av.readAv(dir);
+  data.version = { major: 0, minor: 2, patch: 0 };
+  av.writeJson(path.join(dir, 'appversion.json'), data);
+  const mism = av.checkSync(av.readAv(dir), dir);
+  assert.strictEqual(mism.length, 1);
+  assert.strictEqual(mism[0].found, '0.0.0');
+  assert.strictEqual(mism[0].expected, '0.2.0');
+});
+
+test('CLI check exits non-zero on drift and zero when synced', () => {
+  const dir = tmp();
+  runCli(['init', '--path', dir]);
+  fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ version: '0.0.0' }, null, 2));
+  runCli(['check', '--path', dir]); // in sync -> does not throw
+  const data = av.readAv(dir);
+  data.version = { major: 1, minor: 0, patch: 0 };
+  av.writeJson(path.join(dir, 'appversion.json'), data);
+  assert.throws(() => runCli(['check', '--path', dir]), /Command failed/); // drift -> exit 1
+});
+
+test('CLI sync repairs package.json to the appversion.json version', () => {
+  const dir = tmp();
+  runCli(['init', '--path', dir]);
+  fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ version: '0.0.0' }, null, 2));
+  const data = av.readAv(dir);
+  data.version = { major: 1, minor: 0, patch: 0 };
+  av.writeJson(path.join(dir, 'appversion.json'), data);
+  runCli(['sync', '--path', dir]);
+  assert.strictEqual(JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8')).version, '1.0.0');
+});
+
+test('CLI bump --auto infers the level from commits and applies it (+ package.json)', () => {
+  const dir = tmp();
+  execFileSync('git', ['init', '-q', dir]);
+  execFileSync('git', ['-C', dir, 'config', 'user.email', 't@t.co']);
+  execFileSync('git', ['-C', dir, 'config', 'user.name', 't']);
+  runCli(['init', '--path', dir]);
+  fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ version: '0.0.0' }, null, 2));
+  execFileSync('git', ['-C', dir, 'add', '-A']);
+  execFileSync('git', ['-C', dir, 'commit', '-qm', 'chore: baseline']);
+  execFileSync('git', ['-C', dir, 'commit', '--allow-empty', '-qm', 'feat: add thing']);
+  const out = runCli(['bump', '--auto', '--path', dir]).trim();
+  assert.strictEqual(out, '0.1.0'); // feat -> minor
+  assert.strictEqual(JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8')).version, '0.1.0');
+});
+
+test('installHook writes an executable pre-push hook that runs check', () => {
+  const dir = tmp();
+  execFileSync('git', ['init', '-q', dir]);
+  const hook = av.installHook(dir);
+  assert.ok(fs.existsSync(hook));
+  const body = fs.readFileSync(hook, 'utf8');
+  assert.match(body, /appversion\.js/);
+  assert.match(body, /check/);
+  assert.ok((fs.statSync(hook).mode & 0o111) !== 0); // executable bit set
+});
