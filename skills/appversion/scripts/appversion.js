@@ -2,7 +2,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const { execSync, execFileSync } = require('child_process');
 const trackers = require('./trackers');
 
 const SCHEMA_VERSION = '1.0.0';
@@ -154,6 +154,110 @@ function stampCommit(av, runner) {
   }
 }
 
+// ---- versioning intelligence: infer the level, enforce sync ----
+
+function inferLevel(messages) {
+  if (!messages || messages.length === 0) return null;
+  let sawFeat = false;
+  for (const m of messages) {
+    const subject = String(m).split('\n')[0].trim();
+    if (/^[a-z]+(\([^)]*\))?!:/i.test(subject) || /BREAKING[ -]CHANGE/.test(m)) return 'major';
+    if (/^feat(\([^)]*\))?:/i.test(subject)) sawFeat = true;
+  }
+  return sawFeat ? 'minor' : 'patch';
+}
+
+function defaultTagRunner(dir) {
+  // execFileSync: args go straight to git with no shell, so nothing can inject.
+  // stderr ignored: "no tag yet" is an expected first-release case, not an error to surface.
+  return execFileSync('git', ['describe', '--tags', '--match', 'v*', '--abbrev=0'],
+    { cwd: dir || process.cwd(), stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+}
+
+function lastVersionRef(runner) {
+  try { const t = (runner || (() => defaultTagRunner()))(); return t ? t.trim() : null; }
+  catch { return null; }
+}
+
+function defaultLogRunner(ref, dir) {
+  // `range` is one git argument (execFileSync, no shell) — cannot inject
+  const range = ref ? `${ref}..HEAD` : 'HEAD';
+  return execFileSync('git', ['log', range, '--format=%B%x00'],
+    { cwd: dir || process.cwd() }).toString();
+}
+
+function commitsSince(ref, runner) {
+  let raw;
+  try { raw = (runner || (() => defaultLogRunner(ref)))(); }
+  catch { return []; }
+  return String(raw).split('\0').map((s) => s.trim()).filter(Boolean);
+}
+
+function checkSync(av, dir) {
+  const version = versionString(av);
+  const root = dir || process.cwd();
+  const mismatches = [];
+  for (const rel of ['package.json', ...(av.config.json || [])]) {
+    const file = path.join(root, rel);
+    if (!fs.existsSync(file)) continue;
+    let data;
+    try { data = JSON.parse(fs.readFileSync(file, 'utf8')); } catch { continue; }
+    if (!Object.prototype.hasOwnProperty.call(data, 'version')) continue;
+    if (data.version !== version) mismatches.push({ file: rel, found: data.version, expected: version });
+  }
+  return mismatches;
+}
+
+function installHook(dir) {
+  const root = dir || process.cwd();
+  const hooksDir = path.join(root, '.git', 'hooks');
+  if (!fs.existsSync(hooksDir)) throw new Error('.git/hooks not found (run inside a git repo)');
+  const hookPath = path.join(hooksDir, 'pre-push');
+  const line = `node "${path.join(__dirname, 'appversion.js')}" check --path .`;
+  if (fs.existsSync(hookPath)) {
+    const existing = fs.readFileSync(hookPath, 'utf8');
+    if (existing.includes('appversion.js') && existing.includes('check')) return hookPath;
+    throw new Error(`a pre-push hook already exists at ${hookPath}; add this line manually:\n  ${line}`);
+  }
+  fs.writeFileSync(hookPath, `#!/bin/sh\n# appversion: block push when versions drift\nexec ${line}\n`);
+  fs.chmodSync(hookPath, 0o755);
+  return hookPath;
+}
+
+// ---- git tag + GitHub Release ----
+
+function gitTagExists(tag, dir) {
+  try {
+    const out = execFileSync('git', ['tag', '--list', tag], { cwd: dir || process.cwd() }).toString().trim();
+    return out === tag;
+  } catch { return false; }
+}
+
+function createTag(tag, message, dir) {
+  if (gitTagExists(tag, dir)) throw new Error(`tag ${tag} already exists`);
+  execFileSync('git', ['tag', '-a', tag, '-m', message || `Release ${tag}`], { cwd: dir || process.cwd() });
+  return tag;
+}
+
+function pushTag(tag, dir) {
+  execFileSync('git', ['push', 'origin', tag], { cwd: dir || process.cwd(), stdio: ['ignore', 'pipe', 'pipe'] });
+  return tag;
+}
+
+function ghAvailable() {
+  try { execFileSync('gh', ['--version'], { stdio: 'ignore' }); return true; }
+  catch { return false; }
+}
+
+// Pure: build the `gh release create` argument vector (unit-testable without invoking gh)
+function ghReleaseArgs(tag, { notesFile, notes } = {}) {
+  const a = ['release', 'create', tag];
+  if (notesFile) a.push('--notes-file', notesFile);
+  else if (notes) a.push('--notes', notes);
+  else a.push('--generate-notes');
+  return a;
+}
+
 async function ticketsCommand({ ids, detectText, providers }) {
   if (!providers || !providers.length) return [];
   let items;
@@ -209,7 +313,21 @@ function main(argv) {
       }
       case 'bump': {
         const data = readAv(opts.path);
-        applyBump(data, args[0]);
+        const LEVELS = ['major', 'minor', 'patch'];
+        let level = args.find((a) => LEVELS.includes(a));
+        if (!level && args.includes('--auto')) {
+          const ref = lastVersionRef(() => defaultTagRunner(opts.path));
+          const msgs = commitsSince(ref, () => defaultLogRunner(ref, opts.path));
+          level = inferLevel(msgs);
+          if (!level) {
+            console.log(`nothing to release since ${ref || 'start'} (no commits)`);
+            break;
+          }
+          process.stderr.write(
+            `appversion: auto-detected ${level} from ${msgs.length} commit(s) since ${ref || 'start'}\n`);
+        }
+        if (!level) throw new Error('bump needs a level (major|minor|patch) or --auto');
+        applyBump(data, level);
         stampCommit(data, () => defaultGitRunner(opts.path));
         propagate(data, opts.path, opts);
         refreshBadges(data, opts.path, opts);
@@ -245,9 +363,61 @@ function main(argv) {
          .catch((err) => { process.stderr.write(`appversion: ${err.message}\n`); process.exit(1); });
         break;
       }
+      case 'check': {
+        const data = readAv(opts.path);
+        const mism = checkSync(data, opts.path);
+        if (mism.length) {
+          for (const m of mism) {
+            process.stderr.write(`appversion: ${m.file} is ${m.found}, expected ${m.expected}\n`);
+          }
+          process.stderr.write('appversion: version drift — run `appversion sync` or `appversion bump`\n');
+          process.exit(1);
+        }
+        console.log(`in sync at ${versionString(data)}`);
+        break;
+      }
+      case 'sync': {
+        const data = readAv(opts.path);
+        propagate(data, opts.path, opts);
+        refreshBadges(data, opts.path, opts);
+        console.log(opts.dryRun ? 'dry-run: no changes written' : `synced to ${versionString(data)}`);
+        break;
+      }
+      case 'install-hook': {
+        console.log(`installed pre-push hook at ${installHook(opts.path)}`);
+        break;
+      }
+      case 'tag': {
+        const data = readAv(opts.path);
+        const tag = `v${versionString(data)}`;
+        const push = args.includes('--push');
+        if (opts.dryRun) { console.log(`would tag ${tag}${push ? ' and push it' : ''}`); break; }
+        const mi = args.indexOf('--message');
+        createTag(tag, mi >= 0 ? args[mi + 1] : `Release ${tag}`, opts.path);
+        if (push) pushTag(tag, opts.path);
+        console.log(push ? `tagged and pushed ${tag}` : `tagged ${tag}`);
+        break;
+      }
+      case 'release': {
+        const data = readAv(opts.path);
+        const tag = `v${versionString(data)}`;
+        const nfi = args.indexOf('--notes-file');
+        const ni = args.indexOf('--notes');
+        const ghArgs = ghReleaseArgs(tag, {
+          notesFile: nfi >= 0 ? args[nfi + 1] : undefined,
+          notes: ni >= 0 ? args[ni + 1] : undefined,
+        });
+        if (opts.dryRun) { console.log(`would release ${tag} via: gh ${ghArgs.join(' ')}`); break; }
+        if (!ghAvailable()) throw new Error('gh CLI not found or not on PATH; install it or create the Release manually');
+        if (!gitTagExists(tag, opts.path)) createTag(tag, `Release ${tag}`, opts.path);
+        pushTag(tag, opts.path);
+        execFileSync('gh', ghArgs, { cwd: opts.path, stdio: ['ignore', 'pipe', 'pipe'] });
+        console.log(`released ${tag}`);
+        break;
+      }
       default:
         throw new Error(`unknown command: ${command || '(none)'} ` +
-          `(expected init|show|bump|build|status|tickets)`);
+          `(expected init|show|bump|build|status|tickets|check|sync|install-hook|tag|release)`);
     }
   } catch (err) {
     process.stderr.write(`appversion: ${err.message}\n`);
@@ -255,6 +425,6 @@ function main(argv) {
   }
 }
 
-module.exports = { SCHEMA_VERSION, template, avPath, writeJson, readAv, initFile, versionString, statusString, show, applyBump, today, applyBuild, applyStatus, refreshBadges, propagate, stampCommit, parseArgs, ticketsCommand, main };
+module.exports = { SCHEMA_VERSION, template, avPath, writeJson, readAv, initFile, versionString, statusString, show, applyBump, today, applyBuild, applyStatus, refreshBadges, propagate, stampCommit, inferLevel, lastVersionRef, commitsSince, checkSync, installHook, gitTagExists, createTag, pushTag, ghAvailable, ghReleaseArgs, parseArgs, ticketsCommand, main };
 
 if (require.main === module) main(process.argv);

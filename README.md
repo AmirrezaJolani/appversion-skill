@@ -41,6 +41,40 @@ node skills/appversion/scripts/appversion.js show version --path .
 ```
 `--path .` targets the project you are versioning (the current working directory).
 
+## Never forget again (automatic + enforced)
+
+Two problems this solves directly — forgetting to update `package.json`, and not knowing the level:
+
+```bash
+# decide the level for me from conventional commits, and apply it (package.json included)
+node skills/appversion/scripts/appversion.js bump --auto --path .
+
+# fail loudly if package.json ever drifts from appversion.json (great in CI)
+node skills/appversion/scripts/appversion.js check --path .
+
+# repair drift; and install a pre-push hook so a forgotten sync blocks the push
+node skills/appversion/scripts/appversion.js sync --path .
+node skills/appversion/scripts/appversion.js install-hook --path .
+```
+
+`bump --auto` maps `feat`→minor, `fix`→patch, `feat!`/`BREAKING`→major. The `install-hook` guard is
+read-only — it only blocks a push when versions are out of sync; it never bumps or pushes for you.
+
+## Tag + GitHub Release
+
+```bash
+# create the annotated tag v<version> from appversion.json (won't clobber an existing tag)
+node skills/appversion/scripts/appversion.js tag --push --path .
+
+# push the tag + cut a GitHub Release (needs gh); preview first with --dry-run
+node skills/appversion/scripts/appversion.js release --notes-file NOTES.md --dry-run --path .
+node skills/appversion/scripts/appversion.js release --notes-file NOTES.md --path .
+```
+
+So the whole flow is scriptable end to end: `bump --auto` → commit → `tag` → `release`. The
+outward-facing steps (`--push`, `release`) only run when you invoke them — nothing pushes or
+releases on its own.
+
 ## Test
 ```bash
 npm test   # == node --test
