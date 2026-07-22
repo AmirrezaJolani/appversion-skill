@@ -1,0 +1,26 @@
+skills/appversion/scripts/appversion.js
+  s_98241cf29d641a::t_7aec0e545a61c8 282-296
+  s_98241cf29d641a::t_3a24dc0487efe3 5,157-170,173,175-225
+  s_98241cf29d641a::t_1a7f90cbbb9597 366
+  s_98241cf29d641a::t_897abb2c239eca 332-355,358
+  s_98241cf29d641a::t_37273f32351032 171-172,174
+  s_98241cf29d641a::t_bcfa1a9cf22833 226
+test/appversion.test.js
+  s_98241cf29d641a::t_87426f71ed358c 247-321
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "1c683f0f4b0158821bac73fe1573987ee2c6e1a8",
+  "prompts": {},
+  "sessions": {
+    "s_98241cf29d641a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "577d27f2-f068-410a-8790-782fe4cb9ee0",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "AmirrezaJolani <amirreza.jolani1998@gmail.com>"
+    }
+  }
+}
