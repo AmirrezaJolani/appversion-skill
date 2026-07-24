@@ -1,11 +1,15 @@
 {
   "name": "appversion-skill",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Agent skill: analyze commits, bump semver in appversion.json, update changelog, tag, and cut a GitHub Release.",
   "license": "MIT",
   "repository": "https://github.com/AmirrezaJolani/appversion-skill",
   "homepage": "https://github.com/AmirrezaJolani/appversion-skill",
-  "engines": { "node": ">=18" },
-  "scripts": { "test": "node --test" }
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node --test"
+  }
 }
