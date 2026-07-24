@@ -19,5 +19,6 @@
     "git",
     "github"
   ],
-  "skills": "./skills/"
+  "skills": "./skills/",
+  "commands": "./commands/"
 }

@@ -35,5 +35,6 @@
       "Bump the version and update the changelog."
     ],
     "websiteURL": "https://github.com/AmirrezaJolani/appversion-skill"
-  }
+  },
+  "commands": "./commands/"
 }

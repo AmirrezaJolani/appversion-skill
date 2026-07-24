@@ -45,6 +45,25 @@ ln -s "$(pwd)/skills/appversion" ~/.claude/skills/appversion
 
 All of them point at the same `skills/appversion/`. See [`AGENTS.md`](AGENTS.md).
 
+## Slash commands
+
+Installed as a plugin, the skill exposes commands namespaced by the system they act on — so the work
+is organized by *application*:
+
+| Command | Acts on |
+|---|---|
+| `/appversion:package` | The version files — `appversion.json`, `package.json`, configured JSON + badges. Bump, `--auto`, `check`, `sync`, `install-hook` |
+| `/appversion:github` | Git tag + GitHub Release |
+| `/appversion:jira` | Jira enrichment — config, `JIRA_EMAIL`/`JIRA_API_TOKEN`, `PROJ-123` IDs |
+| `/appversion:linear` | Linear enrichment — `LINEAR_API_KEY`, team-key IDs |
+| `/appversion:plane` | Plane enrichment — `PLANE_API_TOKEN`, host + workspace |
+| `/appversion:shortcut` | Shortcut enrichment — `SHORTCUT_API_TOKEN`, `sc-1234` IDs |
+| `/appversion:clickup` | ClickUp enrichment — `CLICKUP_API_TOKEN`, `CU-…` or custom IDs |
+| `/appversion:release` | The whole guided flow: analyze → recommend → bump → changelog → tag → Release |
+
+Each tracker command carries that provider's own config shape, environment variables, and ticket-ID
+format, so setup is copy-paste rather than guesswork.
+
 ## Requirements
 
 - Node.js ≥ 18 (uses `node:test` and global `fetch`) — **no third-party dependencies**

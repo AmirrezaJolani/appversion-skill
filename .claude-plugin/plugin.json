@@ -20,5 +20,6 @@
     "jira",
     "linear"
   ],
-  "skills": "./skills/"
+  "skills": "./skills/",
+  "commands": "./commands/"
 }

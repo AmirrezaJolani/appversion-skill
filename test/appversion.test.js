@@ -368,6 +368,36 @@ test('CLI tag --dry-run creates no tag', () => {
   assert.strictEqual(av.gitTagExists('v0.5.0', dir), false);
 });
 
+// ---- plugin commands (/appversion:<name>) ----
+
+test('every command file has valid frontmatter with a description', () => {
+  const dir = path.join(__dirname, '..', 'commands');
+  const files = fs.readdirSync(dir).filter((f) => f.endsWith('.md'));
+  assert.ok(files.length > 0, 'expected command files');
+  for (const f of files) {
+    const text = fs.readFileSync(path.join(dir, f), 'utf8');
+    assert.ok(text.startsWith('---\n'), `${f}: must start with YAML frontmatter`);
+    const end = text.indexOf('\n---', 4);
+    assert.ok(end > 0, `${f}: frontmatter is not closed`);
+    const fm = text.slice(4, end);
+    assert.match(fm, /^description:\s*\S+/m, `${f}: needs a description`);
+  }
+});
+
+test('the expected /appversion commands exist', () => {
+  const dir = path.join(__dirname, '..', 'commands');
+  const names = fs.readdirSync(dir).filter((f) => f.endsWith('.md')).map((f) => f.replace(/\.md$/, '')).sort();
+  assert.deepStrictEqual(names,
+    ['clickup', 'github', 'jira', 'linear', 'package', 'plane', 'release', 'shortcut']);
+});
+
+test('plugin manifests declare the commands directory', () => {
+  for (const m of ['.claude-plugin/plugin.json', '.cursor-plugin/plugin.json', '.codex-plugin/plugin.json']) {
+    const d = JSON.parse(fs.readFileSync(path.join(__dirname, '..', m), 'utf8'));
+    assert.strictEqual(d.commands, './commands/', `${m}: commands not declared`);
+  }
+});
+
 test('CLI tag --push pushes the tag to origin', () => {
   const remote = tmp();
   execFileSync('git', ['init', '-q', '--bare', remote]);
