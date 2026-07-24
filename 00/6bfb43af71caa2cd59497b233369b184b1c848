@@ -1,0 +1,28 @@
+test/appversion.test.js
+  s_98241cf29d641a::t_b40e0824a56161 448-483
+skills/appversion/scripts/appversion.js
+  s_98241cf29d641a::t_b10729e8478499 433
+  s_98241cf29d641a::t_1c4aa11c9822de 213-222
+  s_98241cf29d641a::t_87cfb756423223 302-305,315-318
+  s_98241cf29d641a::t_3a8264e4bb5d20 143
+  s_98241cf29d641a::t_8b9b3b16cc60f1 5
+  s_98241cf29d641a::t_8419741056706c 255-270
+  s_98241cf29d641a::t_a274a6ae4b164d 465
+  s_98241cf29d641a::t_b95a2f47d272e0 448-450
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "006bfb43af71caa2cd59497b233369b184b1c848",
+  "prompts": {},
+  "sessions": {
+    "s_98241cf29d641a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "577d27f2-f068-410a-8790-782fe4cb9ee0",
+        "model": "claude-fable-5"
+      },
+      "human_author": "AmirrezaJolani <amirreza.jolani1998@gmail.com>"
+    }
+  }
+}
