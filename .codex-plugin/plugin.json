@@ -1,6 +1,6 @@
 {
   "name": "appversion",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Analyze commits, recommend and apply a SemVer bump to appversion.json + package.json, update the changelog, and cut a tagged GitHub Release. Optional read-only enrichment from Jira, Plane, Shortcut, ClickUp, Linear.",
   "author": {
     "name": "AmirrezaJolani",
