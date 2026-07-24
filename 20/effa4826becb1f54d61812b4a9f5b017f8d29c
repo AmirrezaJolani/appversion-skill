@@ -1,0 +1,24 @@
+CONTRIBUTING.md
+  s_98241cf29d641a::t_dff69b5adc848c 1-42,44-101
+  s_98241cf29d641a::t_c0e3cede4392e0 43
+README.md
+  s_98241cf29d641a::t_817c8de4147362 21-22,25-26,29-33,35,38-39,42-43
+  s_98241cf29d641a::t_627bc51a68156d 171-183
+  s_98241cf29d641a::t_4db4b0235b7b8d 44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "20effa4826becb1f54d61812b4a9f5b017f8d29c",
+  "prompts": {},
+  "sessions": {
+    "s_98241cf29d641a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "577d27f2-f068-410a-8790-782fe4cb9ee0",
+        "model": "claude-opus-5"
+      },
+      "human_author": "AmirrezaJolani <amirreza.jolani1998@gmail.com>"
+    }
+  }
+}
