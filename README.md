@@ -18,19 +18,29 @@ Installation differs by harness. If you use more than one, install it separately
 
 ### Claude Code
 
-Register this repository as a plugin marketplace, then install the plugin:
+**Plugin marketplace** (recommended — gets the skill *and* the `/appversion:*` commands).
+These are slash commands: run them inside an interactive `claude` session, not in your shell.
 
 ```
+/plugin marketplace add AmirrezaJolani/appversion-skill
+/plugin install appversion@appversion-skill
+```
+
+**skills CLI** — installs just the skill, no commands. This one *is* a shell command:
+
+```bash
 npx skills add AmirrezaJolani/appversion-skill --skill appversion
 ```
 
-Run these from an interactive `claude` terminal (`/plugin` opens a dialog).
-
-Prefer no plugin system? Symlink the skill directly:
+**Manual symlink** — no plugin system, no network:
 
 ```bash
-ln -s "$(pwd)/skills/appversion" ~/.claude/skills/appversion
+git clone https://github.com/AmirrezaJolani/appversion-skill.git
+ln -s "$PWD/appversion-skill/skills/appversion" ~/.claude/skills/appversion
 ```
+
+Verify it worked by asking Claude to "bump the version" in a project, or by running
+`/appversion:package` if you installed via the marketplace.
 
 ### Other agents
 
@@ -157,6 +167,19 @@ test/                  node:test suite
 
 See [`skills/appversion/SKILL.md`](skills/appversion/SKILL.md) for the full procedure and
 `skills/appversion/references/` for the schema and changelog format.
+
+## Contributing
+
+Contributions are welcome — bug reports, new tracker adapters, docs fixes. The short version:
+
+```bash
+git clone https://github.com/AmirrezaJolani/appversion-skill.git
+cd appversion-skill
+npm test          # 60 tests, no install step — there are no dependencies
+```
+
+Then branch, write a failing test first, make it pass, and open a PR. Full guidelines, project
+layout, and the "adding a tracker" walkthrough are in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
