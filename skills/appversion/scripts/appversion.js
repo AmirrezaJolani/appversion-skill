@@ -384,6 +384,10 @@ function main(argv) {
         break;
       }
       case 'install-hook': {
+        if (opts.dryRun) {
+          console.log(`would install pre-push hook at ${path.join(opts.path, '.git', 'hooks', 'pre-push')}`);
+          break;
+        }
         console.log(`installed pre-push hook at ${installHook(opts.path)}`);
         break;
       }

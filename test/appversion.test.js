@@ -309,6 +309,53 @@ test('CLI bump --auto infers the level from commits and applies it (+ package.js
   assert.strictEqual(JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8')).version, '0.1.0');
 });
 
+test('CLI install-hook --dry-run writes nothing', () => {
+  const dir = tmp();
+  execFileSync('git', ['init', '-q', dir]);
+  const out = runCli(['install-hook', '--dry-run', '--path', dir]).trim();
+  assert.match(out, /would install pre-push hook/);
+  assert.strictEqual(fs.existsSync(path.join(dir, '.git', 'hooks', 'pre-push')), false);
+});
+
+test('installHook is idempotent for its own hook and refuses a foreign one', () => {
+  const dir = tmp();
+  execFileSync('git', ['init', '-q', dir]);
+  const first = av.installHook(dir);
+  const second = av.installHook(dir); // ours already there -> no error, same path
+  assert.strictEqual(first, second);
+  fs.writeFileSync(first, '#!/bin/sh\nexit 0\n'); // replace with a foreign hook
+  assert.throws(() => av.installHook(dir), /already exists/);
+});
+
+test('CLI release --dry-run creates no tag and previews the gh command', () => {
+  const dir = gitRepoAt('3.1.4');
+  const out = runCli(['release', '--notes', 'hello', '--dry-run', '--path', dir]).trim();
+  assert.match(out, /would release v3\.1\.4 via: gh release create v3\.1\.4 --notes hello/);
+  assert.strictEqual(av.gitTagExists('v3.1.4', dir), false);
+});
+
+test('CLI tag --message stores a multi-word annotation', () => {
+  const dir = gitRepoAt('1.1.0');
+  runCli(['tag', '--message', 'Release with several words', '--path', dir]);
+  const msg = execFileSync('git', ['-C', dir, 'tag', '-l', '-n99', 'v1.1.0'], { encoding: 'utf8' });
+  assert.match(msg, /Release with several words/);
+});
+
+test('CLI bump --auto with no commits since the tag reports nothing to release', () => {
+  const dir = gitRepoAt('1.0.0');
+  execFileSync('git', ['-C', dir, 'tag', '-a', 'v1.0.0', '-m', 'v1.0.0']);
+  const before = fs.readFileSync(path.join(dir, 'appversion.json'), 'utf8');
+  const out = runCli(['bump', '--auto', '--path', dir]).trim();
+  assert.match(out, /nothing to release/);
+  assert.strictEqual(fs.readFileSync(path.join(dir, 'appversion.json'), 'utf8'), before);
+});
+
+test('inferLevel is not fooled by feature:/merge/revert subjects', () => {
+  assert.strictEqual(av.inferLevel(['feature: not conventional']), 'patch'); // not feat:
+  assert.strictEqual(av.inferLevel(['Merge pull request #7 from x/y']), 'patch');
+  assert.strictEqual(av.inferLevel(['revert: feat: add thing']), 'patch'); // revert subject, no feat: prefix
+});
+
 test('installHook writes an executable pre-push hook that runs check', () => {
   const dir = tmp();
   execFileSync('git', ['init', '-q', dir]);
