@@ -1,0 +1,21 @@
+skills/appversion/scripts/appversion.js
+  s_98241cf29d641a::t_2af519e6e5ea94 387-390
+test/appversion.test.js
+  s_98241cf29d641a::t_d6229851435fab 312-358
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "fa7727ec7c31b449ab2d479b3c474224e9f5dff0",
+  "prompts": {},
+  "sessions": {
+    "s_98241cf29d641a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "577d27f2-f068-410a-8790-782fe4cb9ee0",
+        "model": "claude-fable-5"
+      },
+      "human_author": "AmirrezaJolani <amirreza.jolani1998@gmail.com>"
+    }
+  }
+}
