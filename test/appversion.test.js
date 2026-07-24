@@ -445,6 +445,42 @@ test('plugin manifests declare the commands directory', () => {
   }
 });
 
+// ---- review minor fixes ----
+
+test('tag --push cleans up the local tag when the remote rejects the push', () => {
+  const remote = tmp();
+  execFileSync('git', ['init', '-q', '--bare', remote]);
+  const dir = gitRepoAt('1.0.0');
+  execFileSync('git', ['-C', dir, 'remote', 'add', 'origin', remote]);
+  // remote already has v1.0.0 (pushed earlier, e.g. from another clone)...
+  execFileSync('git', ['-C', dir, 'tag', '-a', 'v1.0.0', '-m', 'elsewhere']);
+  execFileSync('git', ['-C', dir, 'push', '-q', 'origin', 'v1.0.0']);
+  // ...but pointing at a different commit than ours will be
+  execFileSync('git', ['-C', dir, 'tag', '-d', 'v1.0.0']);
+  execFileSync('git', ['-C', dir, 'commit', '--allow-empty', '-qm', 'fix: newer work']);
+  assert.throws(() => runCli(['tag', '--push', '--path', dir]), /Command failed/);
+  // the tag we created must not linger locally after the rejected push
+  assert.strictEqual(av.gitTagExists('v1.0.0', dir), false);
+});
+
+test('parseArgs: value flags consume the next token verbatim', () => {
+  const p1 = av.parseArgs(['node', 'av', 'release', '--notes', '--dry-run']);
+  assert.strictEqual(p1.opts.dryRun, false); // "--dry-run" is the notes VALUE, not the flag
+  assert.deepStrictEqual(p1.args, ['--notes', '--dry-run']);
+  const p2 = av.parseArgs(['node', 'av', 'tag', '--message', '--path']);
+  assert.strictEqual(p2.opts.path, process.cwd()); // "--path" is the message VALUE
+  assert.deepStrictEqual(p2.args, ['--message', '--path']);
+});
+
+test('installHook honors core.hooksPath', () => {
+  const dir = tmp();
+  execFileSync('git', ['init', '-q', dir]);
+  execFileSync('git', ['-C', dir, 'config', 'core.hooksPath', '.githooks']);
+  const hook = av.installHook(dir);
+  assert.ok(hook.includes('.githooks'), `expected hook under .githooks, got ${hook}`);
+  assert.ok(fs.existsSync(path.join(dir, '.githooks', 'pre-push')));
+});
+
 test('CLI tag --push pushes the tag to origin', () => {
   const remote = tmp();
   execFileSync('git', ['init', '-q', '--bare', remote]);

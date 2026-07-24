@@ -2,7 +2,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
-const { execSync, execFileSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const trackers = require('./trackers');
 
 const SCHEMA_VERSION = '1.0.0';
@@ -140,7 +140,7 @@ function propagate(av, dir, opts) {
 }
 
 function defaultGitRunner(dir) {
-  return execSync('git rev-parse --short HEAD', { cwd: dir || process.cwd() })
+  return execFileSync('git', ['rev-parse', '--short', 'HEAD'], { cwd: dir || process.cwd() })
     .toString().trim();
 }
 
@@ -210,8 +210,16 @@ function checkSync(av, dir) {
 
 function installHook(dir) {
   const root = dir || process.cwd();
-  const hooksDir = path.join(root, '.git', 'hooks');
-  if (!fs.existsSync(hooksDir)) throw new Error('.git/hooks not found (run inside a git repo)');
+  let hooksDir;
+  try {
+    // --git-path honors core.hooksPath and linked-worktree/submodule layouts
+    const p = execFileSync('git', ['rev-parse', '--git-path', 'hooks'],
+      { cwd: root, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+    hooksDir = path.isAbsolute(p) ? p : path.join(root, p);
+  } catch {
+    throw new Error('.git/hooks not found (run inside a git repo)');
+  }
+  fs.mkdirSync(hooksDir, { recursive: true }); // a configured core.hooksPath may not exist yet
   const hookPath = path.join(hooksDir, 'pre-push');
   const line = `node "${path.join(__dirname, 'appversion.js')}" check --path .`;
   if (fs.existsSync(hookPath)) {
@@ -242,6 +250,22 @@ function createTag(tag, message, dir) {
 function pushTag(tag, dir) {
   execFileSync('git', ['push', 'origin', tag], { cwd: dir || process.cwd(), stdio: ['ignore', 'pipe', 'pipe'] });
   return tag;
+}
+
+function deleteLocalTag(tag, dir) {
+  try { execFileSync('git', ['tag', '-d', tag], { cwd: dir || process.cwd(), stdio: 'ignore' }); }
+  catch { /* best-effort cleanup */ }
+}
+
+// Push a tag; if the remote rejects it and we created the local tag in this
+// invocation, remove it again so a failed push leaves no dangling local tag.
+function pushTagOrCleanUp(tag, dir, createdHere) {
+  try { pushTag(tag, dir); }
+  catch {
+    if (createdHere) deleteLocalTag(tag, dir);
+    throw new Error(`pushing ${tag} failed — does it already exist on the remote?` +
+      (createdHere ? ' (the local tag created just now was removed)' : ''));
+  }
 }
 
 function ghAvailable() {
@@ -275,6 +299,10 @@ function readStdin() {
   try { return require('fs').readFileSync(0, 'utf8'); } catch { return ''; }
 }
 
+// Command flags that take a value: the next token is consumed verbatim,
+// so a value that looks like a global flag (e.g. --dry-run) is not swallowed.
+const VALUE_FLAGS = ['--message', '--notes', '--notes-file'];
+
 function parseArgs(argv) {
   const rest = argv.slice(2);
   const opts = { path: process.cwd(), json: false, dryRun: false };
@@ -284,6 +312,10 @@ function parseArgs(argv) {
     if (a === '--path') { opts.path = rest[++i]; }
     else if (a === '--json') { opts.json = true; }
     else if (a === '--dry-run') { opts.dryRun = true; }
+    else if (VALUE_FLAGS.includes(a)) {
+      positional.push(a);
+      if (i + 1 < rest.length) positional.push(rest[++i]);
+    }
     else { positional.push(a); }
   }
   return { command: positional[0], args: positional.slice(1), opts };
@@ -398,7 +430,7 @@ function main(argv) {
         if (opts.dryRun) { console.log(`would tag ${tag}${push ? ' and push it' : ''}`); break; }
         const mi = args.indexOf('--message');
         createTag(tag, mi >= 0 ? args[mi + 1] : `Release ${tag}`, opts.path);
-        if (push) pushTag(tag, opts.path);
+        if (push) pushTagOrCleanUp(tag, opts.path, true);
         console.log(push ? `tagged and pushed ${tag}` : `tagged ${tag}`);
         break;
       }
@@ -413,8 +445,9 @@ function main(argv) {
         });
         if (opts.dryRun) { console.log(`would release ${tag} via: gh ${ghArgs.join(' ')}`); break; }
         if (!ghAvailable()) throw new Error('gh CLI not found or not on PATH; install it or create the Release manually');
-        if (!gitTagExists(tag, opts.path)) createTag(tag, `Release ${tag}`, opts.path);
-        pushTag(tag, opts.path);
+        const hadTag = gitTagExists(tag, opts.path);
+        if (!hadTag) createTag(tag, `Release ${tag}`, opts.path);
+        pushTagOrCleanUp(tag, opts.path, !hadTag);
         execFileSync('gh', ghArgs, { cwd: opts.path, stdio: ['ignore', 'pipe', 'pipe'] });
         console.log(`released ${tag}`);
         break;
@@ -429,6 +462,6 @@ function main(argv) {
   }
 }
 
-module.exports = { SCHEMA_VERSION, template, avPath, writeJson, readAv, initFile, versionString, statusString, show, applyBump, today, applyBuild, applyStatus, refreshBadges, propagate, stampCommit, inferLevel, lastVersionRef, commitsSince, checkSync, installHook, gitTagExists, createTag, pushTag, ghAvailable, ghReleaseArgs, parseArgs, ticketsCommand, main };
+module.exports = { SCHEMA_VERSION, template, avPath, writeJson, readAv, initFile, versionString, statusString, show, applyBump, today, applyBuild, applyStatus, refreshBadges, propagate, stampCommit, inferLevel, lastVersionRef, commitsSince, checkSync, installHook, gitTagExists, createTag, pushTag, pushTagOrCleanUp, ghAvailable, ghReleaseArgs, parseArgs, ticketsCommand, main };
 
 if (require.main === module) main(process.argv);
