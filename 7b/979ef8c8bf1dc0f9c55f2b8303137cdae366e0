@@ -1,0 +1,45 @@
+README.md
+  s_98241cf29d641a::t_dac0bf3a704505 48-66
+commands/linear.md
+  s_98241cf29d641a::t_d4a0ac1bd08bca 1-49
+commands/plane.md
+  s_98241cf29d641a::t_79e982924d3f42 1-55
+commands/package.md
+  s_98241cf29d641a::t_2952948f913344 1-47
+commands/clickup.md
+  s_98241cf29d641a::t_1cfb7c89b183c0 1-50
+commands/shortcut.md
+  s_98241cf29d641a::t_ac52b7d4ca3ca5 1-51
+test/appversion.test.js
+  s_98241cf29d641a::t_638e704eeef6f2 371-400
+commands/github.md
+  s_98241cf29d641a::t_33807be6a8cb8f 1-54
+AGENTS.md
+  s_98241cf29d641a::t_4ecac9963c6389 11-14
+commands/jira.md
+  s_98241cf29d641a::t_01675b46f4c508 1-52
+commands/release.md
+  s_98241cf29d641a::t_88d9e0f191f2bd 1-40
+.claude-plugin/plugin.json
+  s_98241cf29d641a::t_c2cd195ba2ce0c 23-24
+.codex-plugin/plugin.json
+  s_98241cf29d641a::t_dac8e927534bd6 38-39
+.cursor-plugin/plugin.json
+  s_98241cf29d641a::t_b61c178eb888c1 22-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "7b979ef8c8bf1dc0f9c55f2b8303137cdae366e0",
+  "prompts": {},
+  "sessions": {
+    "s_98241cf29d641a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "577d27f2-f068-410a-8790-782fe4cb9ee0",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "AmirrezaJolani <amirreza.jolani1998@gmail.com>"
+    }
+  }
+}
