@@ -132,4 +132,5 @@ commands. Offer to set these up.
 - **Repair drift:** `node "$APPVERSION" sync --path .` rewrites `package.json`/`config.json` to the
   current `appversion.json` version (no bump) — the fix when `check` fails.
 
-Enforcement is read-only and blocks nothing but a drifted push; it never bumps or pushes on its own.
+Enforcement is read-only and blocks nothing but a drifted push — a branch with no `appversion.json`
+passes untouched. It never bumps or pushes on its own.

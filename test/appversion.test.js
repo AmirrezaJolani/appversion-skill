@@ -463,13 +463,82 @@ test('tag --push cleans up the local tag when the remote rejects the push', () =
   assert.strictEqual(av.gitTagExists('v1.0.0', dir), false);
 });
 
-test('parseArgs: value flags consume the next token verbatim', () => {
-  const p1 = av.parseArgs(['node', 'av', 'release', '--notes', '--dry-run']);
-  assert.strictEqual(p1.opts.dryRun, false); // "--dry-run" is the notes VALUE, not the flag
-  assert.deepStrictEqual(p1.args, ['--notes', '--dry-run']);
-  const p2 = av.parseArgs(['node', 'av', 'tag', '--message', '--path']);
-  assert.strictEqual(p2.opts.path, process.cwd()); // "--path" is the message VALUE
-  assert.deepStrictEqual(p2.args, ['--message', '--path']);
+test('parseArgs: a missing value flag errors instead of eating the next flag', () => {
+  // A typo must never let a value flag swallow --dry-run and turn a preview into a real release.
+  assert.throws(() => av.parseArgs(['node', 'av', 'release', '--notes-file', '--dry-run']),
+    /--notes-file requires a value/);
+  assert.throws(() => av.parseArgs(['node', 'av', 'tag', '--message', '--push']),
+    /--message requires a value/);
+  assert.throws(() => av.parseArgs(['node', 'av', 'tag', '--message']), /--message requires a value/);
+  assert.throws(() => av.parseArgs(['node', 'av', 'show', '--path']), /--path requires a value/);
+});
+
+test('parseArgs: value flags land in opts, never in positional args', () => {
+  const q = av.parseArgs(['node', 'av', 'tag', '--message', 'my note', '--push', '--dry-run']);
+  assert.strictEqual(q.opts.message, 'my note');
+  assert.strictEqual(q.opts.dryRun, true);       // --dry-run still honored
+  assert.deepStrictEqual(q.args, ['--push']);    // only real flags remain positional
+});
+
+test('parseArgs: --flag=value form carries values that start with dashes', () => {
+  const p = av.parseArgs(['node', 'av', 'release', '--notes=--literal--', '--dry-run']);
+  assert.strictEqual(p.opts.notes, '--literal--');
+  assert.strictEqual(p.opts.dryRun, true);
+});
+
+test('CLI release with a valueless --notes-file does not push or release', () => {
+  const remote = tmp();
+  execFileSync('git', ['init', '-q', '--bare', remote]);
+  const dir = gitRepoAt('0.4.0');
+  execFileSync('git', ['-C', dir, 'remote', 'add', 'origin', remote]);
+  assert.throws(() => runCli(['release', '--notes-file', '--dry-run', '--path', dir]),
+    /Command failed/);
+  const remoteTags = execFileSync('git', ['-C', remote, 'tag', '--list'], { encoding: 'utf8' }).trim();
+  assert.strictEqual(remoteTags, '', 'nothing may reach the remote');
+  assert.strictEqual(av.gitTagExists('v0.4.0', dir), false);
+});
+
+test('a pre-existing tag survives a failed push (only our own tag is cleaned up)', () => {
+  const remote = tmp();
+  execFileSync('git', ['init', '-q', '--bare', remote]);
+  const dir = gitRepoAt('0.9.0');
+  execFileSync('git', ['-C', dir, 'remote', 'add', 'origin', remote]);
+  // the remote already holds v0.9.0 at a different commit
+  execFileSync('git', ['-C', dir, 'tag', '-a', 'v0.9.0', '-m', 'theirs']);
+  execFileSync('git', ['-C', dir, 'push', '-q', 'origin', 'v0.9.0']);
+  execFileSync('git', ['-C', dir, 'tag', '-d', 'v0.9.0']);
+  execFileSync('git', ['-C', dir, 'commit', '--allow-empty', '-qm', 'fix: later']);
+  // ...and the user has their OWN local tag of the same name
+  execFileSync('git', ['-C', dir, 'tag', '-a', 'v0.9.0', '-m', 'MINE — must survive']);
+  assert.throws(() => runCli(['tag', '--push', '--path', dir]), /Command failed/);
+  assert.ok(av.gitTagExists('v0.9.0', dir), 'the user\'s pre-existing tag must not be deleted');
+  const msg = execFileSync('git', ['-C', dir, 'tag', '-l', '-n9', 'v0.9.0'], { encoding: 'utf8' });
+  assert.match(msg, /MINE/);
+});
+
+test('a failed push for a non-rejection reason keeps the tag and reports git\'s reason', () => {
+  const dir = gitRepoAt('0.3.0'); // no remote configured at all
+  let err;
+  try { runCli(['tag', '--push', '--path', dir]); } catch (e) { err = e; }
+  assert.ok(err, 'expected a non-zero exit');
+  const stderr = String(err.stderr || '');
+  assert.match(stderr, /does not appear to be a git repository|could not read|No such/i,
+    'must surface git\'s real reason, not a guess about the tag existing');
+  assert.ok(av.gitTagExists('0.3.0'.replace(/^/, 'v'), dir),
+    'a transient/config failure must not destroy the annotated tag');
+});
+
+test('inferLevel only treats a BREAKING CHANGE footer as major, not prose', () => {
+  assert.strictEqual(av.inferLevel(['docs: explain what BREAKING CHANGE means']), 'patch');
+  assert.strictEqual(av.inferLevel(['Merge pull request #12 from acme/feat/BREAKING-CHANGE-cleanup']), 'patch');
+  assert.strictEqual(av.inferLevel(['fix: x\n\nBREAKING CHANGE: really does break']), 'major');
+});
+
+test('check exits 0 when there is no appversion.json (hook must not block every push)', () => {
+  const dir = tmp();
+  execFileSync('git', ['init', '-q', dir]);
+  const out = runCli(['check', '--path', dir]).trim(); // must not throw
+  assert.match(out, /nothing to verify/i);
 });
 
 test('installHook honors core.hooksPath', () => {

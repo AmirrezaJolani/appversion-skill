@@ -140,8 +140,10 @@ function propagate(av, dir, opts) {
 }
 
 function defaultGitRunner(dir) {
-  return execFileSync('git', ['rev-parse', '--short', 'HEAD'], { cwd: dir || process.cwd() })
-    .toString().trim();
+  // stderr ignored: "no commits yet" / "not a git repo" are handled by the caller,
+  // so git's fatal: line would only look like a failure that did not happen.
+  return execFileSync('git', ['rev-parse', '--short', 'HEAD'],
+    { cwd: dir || process.cwd(), stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
 }
 
 function stampCommit(av, runner) {
@@ -161,7 +163,9 @@ function inferLevel(messages) {
   let sawFeat = false;
   for (const m of messages) {
     const subject = String(m).split('\n')[0].trim();
-    if (/^[a-z]+(\([^)]*\))?!:/i.test(subject) || /BREAKING[ -]CHANGE/.test(m)) return 'major';
+    // BREAKING CHANGE must be a footer (own line, with colon) — prose or a branch
+    // name merely mentioning the phrase must not force a major bump.
+    if (/^[a-z]+(\([^)]*\))?!:/i.test(subject) || /^BREAKING[ -]CHANGE:/m.test(m)) return 'major';
     if (/^feat(\([^)]*\))?:/i.test(subject)) sawFeat = true;
   }
   return sawFeat ? 'minor' : 'patch';
@@ -182,8 +186,9 @@ function lastVersionRef(runner) {
 function defaultLogRunner(ref, dir) {
   // `range` is one git argument (execFileSync, no shell) — cannot inject
   const range = ref ? `${ref}..HEAD` : 'HEAD';
+  // stderr ignored: an empty repo is an expected case handled by commitsSince
   return execFileSync('git', ['log', range, '--format=%B%x00'],
-    { cwd: dir || process.cwd() }).toString();
+    { cwd: dir || process.cwd(), stdio: ['ignore', 'pipe', 'ignore'] }).toString();
 }
 
 function commitsSince(ref, runner) {
@@ -208,7 +213,9 @@ function checkSync(av, dir) {
   return mismatches;
 }
 
-function installHook(dir) {
+// Where the pre-push hook belongs. Read-only, so --dry-run can preview the real
+// destination instead of guessing `.git/hooks`.
+function resolveHookPath(dir) {
   const root = dir || process.cwd();
   let hooksDir;
   try {
@@ -217,16 +224,21 @@ function installHook(dir) {
       { cwd: root, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
     hooksDir = path.isAbsolute(p) ? p : path.join(root, p);
   } catch {
-    throw new Error('.git/hooks not found (run inside a git repo)');
+    throw new Error('git hooks directory not found (run inside a git repo)');
   }
-  fs.mkdirSync(hooksDir, { recursive: true }); // a configured core.hooksPath may not exist yet
-  const hookPath = path.join(hooksDir, 'pre-push');
+  return path.join(hooksDir, 'pre-push');
+}
+
+function installHook(dir) {
+  const hookPath = resolveHookPath(dir);
   const line = `node "${path.join(__dirname, 'appversion.js')}" check --path .`;
   if (fs.existsSync(hookPath)) {
     const existing = fs.readFileSync(hookPath, 'utf8');
     if (existing.includes('appversion.js') && existing.includes('check')) return hookPath;
     throw new Error(`a pre-push hook already exists at ${hookPath}; add this line manually:\n  ${line}`);
   }
+  // created only once we know we will write: a refused foreign hook leaves no empty dir
+  fs.mkdirSync(path.dirname(hookPath), { recursive: true });
   fs.writeFileSync(hookPath, `#!/bin/sh\n# appversion: block push when versions drift\nexec ${line}\n`);
   fs.chmodSync(hookPath, 0o755);
   return hookPath;
@@ -257,14 +269,22 @@ function deleteLocalTag(tag, dir) {
   catch { /* best-effort cleanup */ }
 }
 
-// Push a tag; if the remote rejects it and we created the local tag in this
-// invocation, remove it again so a failed push leaves no dangling local tag.
+// Push a tag. Clean up ONLY when the remote actually rejected the ref AND we created
+// the tag in this invocation — a missing remote, bad auth, or network failure must
+// leave the tag (its annotation holds the approved changelog body) and surface git's
+// own reason instead of a guess.
 function pushTagOrCleanUp(tag, dir, createdHere) {
   try { pushTag(tag, dir); }
-  catch {
-    if (createdHere) deleteLocalTag(tag, dir);
-    throw new Error(`pushing ${tag} failed — does it already exist on the remote?` +
-      (createdHere ? ' (the local tag created just now was removed)' : ''));
+  catch (err) {
+    const stderr = String((err && err.stderr) || '');
+    const rejected = /already exists|\[rejected\]|non-fast-forward/i.test(stderr);
+    if (rejected) {
+      if (createdHere) deleteLocalTag(tag, dir);
+      throw new Error(`the remote already has ${tag}` +
+        (createdHere ? ' (the local tag created just now was removed)' : '') +
+        ` — bump the version or reconcile the tag`);
+    }
+    throw new Error(`pushing ${tag} failed; the local tag was kept.\n${stderr.trim()}`);
   }
 }
 
@@ -299,22 +319,38 @@ function readStdin() {
   try { return require('fs').readFileSync(0, 'utf8'); } catch { return ''; }
 }
 
-// Command flags that take a value: the next token is consumed verbatim,
-// so a value that looks like a global flag (e.g. --dry-run) is not swallowed.
-const VALUE_FLAGS = ['--message', '--notes', '--notes-file'];
+// Flags that take a value, mapped to their opts key. Values are stored in opts —
+// never pushed into positional args — so a value can never be mistaken for a flag
+// (e.g. `--message --push` must not be read as "push"). A missing value is an
+// error rather than silently eating the next flag: swallowing `--dry-run` would
+// turn a requested preview into a real push + GitHub Release.
+const VALUE_FLAGS = {
+  '--path': 'path',
+  '--message': 'message',
+  '--notes': 'notes',
+  '--notes-file': 'notesFile',
+};
 
 function parseArgs(argv) {
   const rest = argv.slice(2);
-  const opts = { path: process.cwd(), json: false, dryRun: false };
+  const opts = { path: process.cwd(), json: false, dryRun: false, message: null, notes: null, notesFile: null };
   const positional = [];
   for (let i = 0; i < rest.length; i++) {
     const a = rest[i];
-    if (a === '--path') { opts.path = rest[++i]; }
-    else if (a === '--json') { opts.json = true; }
+    const eq = a.indexOf('=');
+    if (a === '--json') { opts.json = true; }
     else if (a === '--dry-run') { opts.dryRun = true; }
-    else if (VALUE_FLAGS.includes(a)) {
-      positional.push(a);
-      if (i + 1 < rest.length) positional.push(rest[++i]);
+    else if (eq > 0 && VALUE_FLAGS[a.slice(0, eq)]) {
+      // --flag=value carries values that legitimately start with dashes
+      opts[VALUE_FLAGS[a.slice(0, eq)]] = a.slice(eq + 1);
+    }
+    else if (VALUE_FLAGS[a]) {
+      const next = rest[i + 1];
+      if (next === undefined || next.startsWith('--')) {
+        throw new Error(`${a} requires a value (use ${a}=<value> if the value starts with --)`);
+      }
+      opts[VALUE_FLAGS[a]] = next;
+      i += 1;
     }
     else { positional.push(a); }
   }
@@ -327,8 +363,9 @@ function commitAv(av, opts) {
 }
 
 function main(argv) {
-  const { command, args, opts } = parseArgs(argv);
   try {
+    // inside the try so a bad flag reports cleanly instead of throwing a stack trace
+    const { command, args, opts } = parseArgs(argv);
     switch (command) {
       case 'init': {
         if (opts.dryRun) {
@@ -396,6 +433,12 @@ function main(argv) {
         break;
       }
       case 'check': {
+        // Absent file is not drift: `check` runs as a pre-push hook, so it must not
+        // block pushes on branches that predate appversion.json.
+        if (!fs.existsSync(avPath(opts.path))) {
+          console.log('no appversion.json — nothing to verify');
+          break;
+        }
         const data = readAv(opts.path);
         const mism = checkSync(data, opts.path);
         if (mism.length) {
@@ -417,7 +460,8 @@ function main(argv) {
       }
       case 'install-hook': {
         if (opts.dryRun) {
-          console.log(`would install pre-push hook at ${path.join(opts.path, '.git', 'hooks', 'pre-push')}`);
+          // resolveHookPath throws outside a repo, matching the real run's behavior
+          console.log(`would install pre-push hook at ${resolveHookPath(opts.path)}`);
           break;
         }
         console.log(`installed pre-push hook at ${installHook(opts.path)}`);
@@ -428,8 +472,7 @@ function main(argv) {
         const tag = `v${versionString(data)}`;
         const push = args.includes('--push');
         if (opts.dryRun) { console.log(`would tag ${tag}${push ? ' and push it' : ''}`); break; }
-        const mi = args.indexOf('--message');
-        createTag(tag, mi >= 0 ? args[mi + 1] : `Release ${tag}`, opts.path);
+        createTag(tag, opts.message || `Release ${tag}`, opts.path);
         if (push) pushTagOrCleanUp(tag, opts.path, true);
         console.log(push ? `tagged and pushed ${tag}` : `tagged ${tag}`);
         break;
@@ -437,11 +480,9 @@ function main(argv) {
       case 'release': {
         const data = readAv(opts.path);
         const tag = `v${versionString(data)}`;
-        const nfi = args.indexOf('--notes-file');
-        const ni = args.indexOf('--notes');
         const ghArgs = ghReleaseArgs(tag, {
-          notesFile: nfi >= 0 ? args[nfi + 1] : undefined,
-          notes: ni >= 0 ? args[ni + 1] : undefined,
+          notesFile: opts.notesFile || undefined,
+          notes: opts.notes || undefined,
         });
         if (opts.dryRun) { console.log(`would release ${tag} via: gh ${ghArgs.join(' ')}`); break; }
         if (!ghAvailable()) throw new Error('gh CLI not found or not on PATH; install it or create the Release manually');
@@ -462,6 +503,6 @@ function main(argv) {
   }
 }
 
-module.exports = { SCHEMA_VERSION, template, avPath, writeJson, readAv, initFile, versionString, statusString, show, applyBump, today, applyBuild, applyStatus, refreshBadges, propagate, stampCommit, inferLevel, lastVersionRef, commitsSince, checkSync, installHook, gitTagExists, createTag, pushTag, pushTagOrCleanUp, ghAvailable, ghReleaseArgs, parseArgs, ticketsCommand, main };
+module.exports = { SCHEMA_VERSION, template, avPath, writeJson, readAv, initFile, versionString, statusString, show, applyBump, today, applyBuild, applyStatus, refreshBadges, propagate, stampCommit, inferLevel, lastVersionRef, commitsSince, checkSync, resolveHookPath, installHook, gitTagExists, createTag, pushTag, pushTagOrCleanUp, ghAvailable, ghReleaseArgs, parseArgs, ticketsCommand, main };
 
 if (require.main === module) main(process.argv);
